@@ -32,3 +32,28 @@ class Database:
             self.connect()
 
         self.cursor = self.connection.cursor()
+        self.create_tables()
+
+    def create_tables(self):
+        query = '''
+        CREATE TABLE IF NOT EXISTS game_version (
+            version VARCHAR PRIMARY KEY,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS units (
+            baseId VARCHAR PRIMARY KEY,
+            name VARCHAR,
+            description VARCHAR
+        );
+        CREATE TABLE IF NOT EXISTS tags (
+            id VARCHAR PRIMARY KEY,
+            name VARCHAR
+        );
+        CREATE TABLE IF NOT EXISTS unit_tags (
+            unitId VARCHAR REFERENCES units(baseId),
+            tagId VARCHAR REFERENCES tags(id),
+            PRIMARY KEY (unitId, tagId)
+        );
+        '''
+        self.cursor.execute(query)
+        self.connection.commit()
