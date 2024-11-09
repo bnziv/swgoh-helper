@@ -42,18 +42,18 @@ class Database:
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS units (
-            baseId VARCHAR PRIMARY KEY,
+            unit_id VARCHAR PRIMARY KEY,
             name VARCHAR,
             description VARCHAR
         );
         CREATE TABLE IF NOT EXISTS tags (
-            id VARCHAR PRIMARY KEY,
+            tag_id VARCHAR PRIMARY KEY,
             name VARCHAR
         );
         CREATE TABLE IF NOT EXISTS unit_tags (
-            unitId VARCHAR REFERENCES units(baseId),
-            tagId VARCHAR REFERENCES tags(id),
-            PRIMARY KEY (unitId, tagId)
+            unit_id VARCHAR REFERENCES units(unit_id),
+            tag_id VARCHAR REFERENCES tags(tag_id),
+            PRIMARY KEY (unit_id, tag_id)
         );
         CREATE TABLE IF NOT EXISTS abilities (
             skill_id VARCHAR PRIMARY KEY,
@@ -65,7 +65,7 @@ class Database:
             omicron_mode INT DEFAULT NULL
         );
         CREATE TABLE IF NOT EXISTS unit_abilities (
-            unit_id VARCHAR REFERENCES units(baseId),
+            unit_id VARCHAR REFERENCES units(unit_id),
             ability_id VARCHAR REFERENCES abilities(skill_id),
             PRIMARY KEY (unit_id, ability_id)
         );

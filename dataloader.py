@@ -39,8 +39,8 @@ class DataLoader:
     def load_data(self):
         gameData = self.comlink.get_game_data(include_pve_units=False)
         localization = self.get_localization()
-        # self.load_units(gameData['units'], localization)
-        # self.load_tags(gameData['category'], localization)
+        self.load_units(gameData['units'], localization)
+        self.load_tags(gameData['category'], localization)
         self.load_abilities(gameData['units'], gameData['skill'], gameData['ability'], localization)
     def load_units(self, units, localization):
         for unit in units:
@@ -49,8 +49,8 @@ class DataLoader:
                 name = localization[unit['nameKey']]
                 desc = localization[unit['descKey']]
                 query = '''
-                INSERT INTO units (baseId, name, description) VALUES (%s, %s, %s)
-                ON CONFLICT (baseId) DO UPDATE SET
+                INSERT INTO units (unit_id, name, description) VALUES (%s, %s, %s)
+                ON CONFLICT (unit_id) DO UPDATE SET
                 name = excluded.name,
                 description = excluded.description;
                 '''
@@ -63,8 +63,8 @@ class DataLoader:
                 id = tag['id']
                 name = localization[tag['descKey']]
                 query = '''
-                INSERT INTO tags (id, name) VALUES (%s, %s)
-                ON CONFLICT (id) DO UPDATE SET
+                INSERT INTO tags (tag_id, name) VALUES (%s, %s)
+                ON CONFLICT (tag_id) DO UPDATE SET
                 name = excluded.name;
                 '''
                 self.cursor.execute(query, (id, name))
@@ -72,11 +72,11 @@ class DataLoader:
 
     def load_unit_tags(self, units):
         query = '''
-        INSERT INTO unit_tags (unitId, tagId) VALUES (%s, %s)
-        ON CONFLICT (unitId, tagId) DO NOTHING'''
-        self.cursor.execute("SELECT id from tags")
+        INSERT INTO unit_tags (unit_id, tag_id) VALUES (%s, %s)
+        ON CONFLICT (unit_id, tag_id) DO NOTHING'''
+        self.cursor.execute("SELECT tag_id from tags")
         visibleTags = {row[0] for row in self.cursor.fetchall()}
-        self.cursor.execute("SELECT baseId from units")
+        self.cursor.execute("SELECT unit_id from units")
         playableUnits = {row[0] for row in self.cursor.fetchall()}
         for unit in units:
             baseId = unit['baseId']
@@ -88,7 +88,7 @@ class DataLoader:
     
     def load_abilities(self, units, skills, abilities, localization):
         queryUnits = '''
-        SELECT baseId FROM units
+        SELECT unit_id FROM units
         '''
         queryAbilities = '''
         INSERT INTO abilities (skill_id, name, description, max_level, is_zeta, is_omicron, omicron_mode) VALUES (%s, %s, %s, %s, %s, %s, %s)
