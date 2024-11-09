@@ -8,7 +8,7 @@ class DataLoader:
         self.cursor = self.db.cursor
         self.comlink = comlink
     
-    def checkVersion(self):
+    def check_version(self):
         version = self.comlink.get_latest_game_data_version()['game']
         query = '''
         INSERT INTO game_version (version) VALUES (%s)
@@ -37,11 +37,11 @@ class DataLoader:
         return localization
 
     def load_data(self):
-        gameData = self.comlink.get_game_data()
+        gameData = self.comlink.get_game_data(include_pve_units=False)
         localization = self.get_localization()
-        self.load_units(gameData['units'], localization)
-        self.load_tags(gameData['category'], localization)
-
+        # self.load_units(gameData['units'], localization)
+        # self.load_tags(gameData['category'], localization)
+        self.load_abilities(gameData['units'], gameData['skill'], gameData['ability'], localization)
     def load_units(self, units, localization):
         for unit in units:
             if unit['obtainableTime'] == '0':
@@ -74,13 +74,61 @@ class DataLoader:
         query = '''
         INSERT INTO unit_tags (unitId, tagId) VALUES (%s, %s)
         ON CONFLICT (unitId, tagId) DO NOTHING'''
-        self.cursor.exeute("SELECT id from tags")
+        self.cursor.execute("SELECT id from tags")
         visibleTags = {row[0] for row in self.cursor.fetchall()}
         self.cursor.execute("SELECT baseId from units")
         playableUnits = {row[0] for row in self.cursor.fetchall()}
         for unit in units:
             baseId = unit['baseId']
-            for tag in unit['categoryId']:
-                if tag in visibleTags:
-                    self.cursor.execute(query, (baseId, tag))
+            if baseId in playableUnits:
+                for tag in unit['categoryId']:
+                    if tag in visibleTags:
+                        self.cursor.execute(query, (baseId, tag))
         self.connection.commit()
+    
+    def load_abilities(self, units, skills, abilities, localization):
+        queryUnits = '''
+        SELECT baseId FROM units
+        '''
+        queryAbilities = '''
+        INSERT INTO abilities (skill_id, name, description, max_level, is_zeta, is_omicron, omicron_mode) VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (skill_id) DO UPDATE SET
+        description = excluded.description
+        '''
+        queryUnitsAbilities = '''
+        INSERT INTO unit_abilities (unit_id, ability_id) VALUES (%s, %s)
+        ON CONFLICT (unit_id, ability_id) DO NOTHING
+        '''
+        self.cursor.execute(queryUnits)
+        playableUnits = [row[0] for row in self.cursor.fetchall()]
+        for unit in units:
+            baseId = unit['baseId']
+            if baseId not in playableUnits:
+                continue
+            skillIds = [skill['skillId'] for skill in unit['skillReference']]
+            skillIds += [skill['skillReference'][0]['skillId'] for skill in unit['crew']]
+            for id in skillIds:
+                name, desc, maxLevel, isZeta, isOmicron, omiMode = self.__get_skill_data(id, skills, abilities, localization)
+                self.cursor.execute(queryAbilities, (id, name, desc, maxLevel, isZeta, isOmicron, omiMode))
+                self.cursor.execute(queryUnitsAbilities, (baseId, id))
+        self.connection.commit()
+            
+    def __get_skill_data(self, id, skills, abilities, localization):
+        for skill in skills:
+            if skill['id'] != id:
+                continue
+            maxLevel = len(skill['tier']) + 1
+            isZeta = skill['isZeta']
+            if skill['omicronMode'] != 1:
+                isOmicron = True
+                omiMode = skill['omicronMode']
+            else:
+                isOmicron = False
+                omiMode = None
+            for ability in abilities:
+                if ability['id'] != skill['abilityReference']:
+                    continue
+                name = localization[ability['nameKey']]
+                descKey = ability['tier'][-1]['descKey']
+                desc = localization[descKey]
+        return name, desc, maxLevel, isZeta, isOmicron, omiMode

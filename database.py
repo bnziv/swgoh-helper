@@ -9,6 +9,7 @@ class Database:
         self.password = os.getenv('DB_PASSWORD')
         self.connection = None
         self.cursor = None
+        self.connect()
 
     def connect(self):
         try:
@@ -53,6 +54,20 @@ class Database:
             unitId VARCHAR REFERENCES units(baseId),
             tagId VARCHAR REFERENCES tags(id),
             PRIMARY KEY (unitId, tagId)
+        );
+        CREATE TABLE IF NOT EXISTS abilities (
+            skill_id VARCHAR PRIMARY KEY,
+            name VARCHAR,
+            description VARCHAR,
+            max_level INT,
+            is_zeta BOOLEAN,
+            is_omicron BOOLEAN,
+            omicron_mode INT DEFAULT NULL
+        );
+        CREATE TABLE IF NOT EXISTS unit_abilities (
+            unit_id VARCHAR REFERENCES units(baseId),
+            ability_id VARCHAR REFERENCES abilities(skill_id),
+            PRIMARY KEY (unit_id, ability_id)
         );
         '''
         self.cursor.execute(query)
