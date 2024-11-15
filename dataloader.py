@@ -46,7 +46,7 @@ class DataLoader:
     
     def load_units(self):
         query = '''
-        INSERT INTO units (unit_id, name, description) VALUES (%s, %s, %s)
+        INSERT INTO units (unit_id, name, description, image_url) VALUES (%s, %s, %s, %s)
         ON CONFLICT (unit_id) DO UPDATE SET
         name = excluded.name,
         description = excluded.description;
@@ -60,8 +60,9 @@ class DataLoader:
             
             name = self.localization[unit['nameKey']]
             desc = self.localization[unit['descKey']]
+            imageUrl = unit['thumbnailName']
             
-            self.cursor.execute(query, (unitId, name, desc))
+            self.cursor.execute(query, (unitId, name, desc, imageUrl))
             processedUnits.add(unitId)
 
         self.connection.commit()
@@ -114,7 +115,8 @@ class DataLoader:
         SELECT unit_id FROM units
         '''
         insertAbilities = '''
-        INSERT INTO abilities (skill_id, name, description, max_level, is_zeta, is_omicron, omicron_mode) VALUES (%s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO abilities (skill_id, name, description, max_level, is_zeta, is_omicron, omicron_mode, image_url) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (skill_id) DO UPDATE SET
         description = excluded.description
         '''
@@ -152,4 +154,5 @@ class DataLoader:
         name = self.localization[ability['nameKey']]
         descKey = ability['tier'][-1]['descKey']
         desc = self.localization[descKey]
-        return id, name, desc, maxLevel, isZeta, isOmicron, omiMode
+        imageUrl = ability["icon"]
+        return id, name, desc, maxLevel, isZeta, isOmicron, omiMode, imageUrl
