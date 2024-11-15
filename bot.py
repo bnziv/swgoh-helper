@@ -1,9 +1,9 @@
 import os
 import discord
 from discord.ext import commands
-from database import Database
+import helpers
 
-db = Database()
+db = helpers.db
 bot = commands.Bot(command_prefix='?', intents=discord.Intents.all())
 
 @bot.hybrid_group(name='unit', description='get unit', fallback="get")
@@ -17,6 +17,7 @@ async def unit(ctx, unit):
     tags = db.cursor.fetchall()
     if tags:
         await ctx.send(tags[0])
+unit.autocomplete("unit")(helpers.unit_autocomplete)
 
 @unit.command(name="abilities", description="get unit's abilities")
 async def abilities(ctx, unit):
@@ -29,6 +30,7 @@ async def abilities(ctx, unit):
     db.cursor.execute(queryAbilities, (unit,))
     abilities = db.cursor.fetchall()[0]
     await ctx.send(f"{abilities[0]}\n{abilities[1]}")
+abilities.autocomplete("unit")(helpers.unit_autocomplete)
 
 
 @bot.event
