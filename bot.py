@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 import helpers
 from unidecode import unidecode
+import re
 
 db = helpers.db
 bot = commands.Bot(command_prefix='?', intents=discord.Intents.all())
@@ -36,14 +37,31 @@ unit.autocomplete("unit")(helpers.unit_autocomplete)
 @unit.command(name="abilities", description="get unit's abilities")
 async def abilities(ctx, unit):
     queryAbilities = '''
-    SELECT a.name, a.description FROM abilities a
+    SELECT a.name, a.description, ua.ability_id, a.image_url FROM abilities a
     JOIN unit_abilities ua ON ua.ability_id = a.skill_id
     JOIN units u on u.unit_id = ua.unit_id
     WHERE u.name = %s
+    ORDER BY CASE 
+        WHEN ua.ability_id LIKE 'basic%%' THEN 1
+        WHEN ua.ability_id LIKE 'special%%' THEN 2
+        WHEN ua.ability_id LIKE 'leader%%' THEN 3
+        WHEN ua.ability_id LIKE 'unique%%' AND ua.ability_id NOT LIKE '%%GALACTICLEGEND%%' THEN 4
+        ELSE 5
+    END, ua.ability_id;
     '''
     db.cursor.execute(queryAbilities, (unit,))
-    abilities = db.cursor.fetchall()[0]
-    await ctx.send(f"{abilities[0]}\n{abilities[1]}")
+    abilities = db.cursor.fetchall()
+    embeds = []
+    for ability in abilities:
+        title = ability[2].capitalize().split('skill')[0]
+        if title == "Hardware":
+            title = "Reinforcement"
+        description = ability[1].replace(r'\n', '\n')
+        description = re.sub(r'\[c\]\[.*?\]|\[-\]\[/c\]', '**', description)
+        embed = discord.Embed(title=f"{unit}\n{title} - {ability[0]}", description=description)
+        embed.set_thumbnail(url=f"https://game-assets.swgoh.gg/textures/{ability[3]}.png")
+        embeds.append(embed)
+    await ctx.send(embed=embeds[0], view=helpers.Pages(embeds))
 abilities.autocomplete("unit")(helpers.unit_autocomplete)
 
 
