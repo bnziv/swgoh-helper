@@ -1,5 +1,6 @@
 import os
 import discord
+from discord import app_commands
 from discord.ext import commands
 import helpers
 from unidecode import unidecode
@@ -61,9 +62,22 @@ async def abilities(ctx, unit):
         embed = discord.Embed(title=f"{unit}\n{title} - {ability[0]}", description=description)
         embed.set_thumbnail(url=f"https://game-assets.swgoh.gg/textures/{ability[3]}.png")
         embeds.append(embed)
-    await ctx.send(embed=embeds[0], view=helpers.Pages(embeds))
+    await ctx.send(embed=embeds[0], view=helpers.EmbedPages(embeds))
 abilities.autocomplete("unit")(helpers.unit_autocomplete)
 
+@unit.command(name="tags", description="Get all unit's with a specific tag")
+async def tags(ctx, tag):
+    queryTags = '''SELECT u.name FROM tags t
+    JOIN unit_tags ut on ut.tag_id = t.tag_id
+    JOIN units u on u.unit_id = ut.unit_id
+    WHERE t.name = %s
+    ORDER BY u.name;
+    '''
+    db.cursor.execute(queryTags, (tag,))
+    units = db.cursor.fetchall()
+    embed = discord.Embed(title=f"Units with {tag} tag", description="\n".join([unit[0] for unit in units]))
+    #TODO: Add each unit's tags
+    await ctx.send(embed=embed)
 
 @bot.event
 async def on_ready():

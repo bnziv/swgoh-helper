@@ -5,11 +5,16 @@ from database import Database
 db = Database()
 
 db.cursor.execute("SELECT name FROM units ORDER BY name;")
-unitsQuery = db.cursor.fetchall()
-units = [app_commands.Choice(name=unit[0], value=unit[0]) for unit in unitsQuery]
+units = [app_commands.Choice(name=unit[0], value=unit[0]) for unit in db.cursor.fetchall()]
 
 async def unit_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     return [unit for unit in units if current.lower() in unit.name.lower()][:25]
+
+db.cursor.execute("SELECT name FROM tags ORDER by name;")
+tags = [app_commands.Choice(name=tag[0], value=tag[0]) for tag in db.cursor.fetchall()]
+
+async def tag_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    return [tag for tag in tags if current.lower() in tag.name.lower()][:25]
 
 class EmbedPages(discord.ui.View):
     def __init__(self, embeds):

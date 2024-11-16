@@ -75,7 +75,7 @@ class DataLoader:
         '''
 
         for tag in self.gameData['category']:
-            if not tag['visible']:
+            if not tag['visible'] or tag['id'] == 'eventonly':
                 continue
 
             id = tag['id']
