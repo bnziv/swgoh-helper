@@ -126,6 +126,7 @@ class DataLoader:
         '''
         self.cursor.execute(selectUnits)
         playableUnits = {row[0] for row in self.cursor.fetchall()}
+        processedUnits = set()
 
         #Lookup dictionaries for helper function
         skills = {s['id']: s for s in self.gameData['skill']}
@@ -133,13 +134,26 @@ class DataLoader:
 
         for unit in self.gameData['units']:
             unitId = unit['baseId']
-            if unitId not in playableUnits:
+            if unitId not in playableUnits or unitId in processedUnits:
                 continue
             skillIds = [s['skillId'] for s in unit['skillReference']] + [s['skillReference'][0]['skillId'] for s in unit['crew']]
             for id in skillIds:
                 skillData = self.__get_skill_data(id, skills, abilities)
                 self.cursor.execute(insertAbilities, skillData)
                 self.cursor.execute(insertUnitsAbilities, (unitId, id))
+            processedUnits.add(unitId)
+            
+            #For galactic legend ultimate abilities
+            if "galactic_legend" not in unit['categoryId']:
+                continue
+            for a in unit['limitBreakRef']:
+                if a['abilityId'].startswith('ultimate'):
+                    ability = abilities[a['abilityId']]
+                    name = self.localization[ability['nameKey']]
+                    desc = self.localization[ability['descKey']]
+                    imageUrl = ability['icon']
+                    self.cursor.execute(insertAbilities, (ability['id'], name, desc, 1, False, False, None, imageUrl))
+                    self.cursor.execute(insertUnitsAbilities, (unitId, ability['id']))
 
         self.connection.commit()
             
@@ -155,4 +169,4 @@ class DataLoader:
         descKey = ability['tier'][-1]['descKey']
         desc = self.localization[descKey]
         imageUrl = ability["icon"]
-        return id, name, desc, maxLevel, isZeta, isOmicron, omiMode, imageUrl
+        return ability['id'], name, desc, maxLevel, isZeta, isOmicron, omiMode, imageUrl
