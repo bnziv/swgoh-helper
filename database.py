@@ -44,7 +44,8 @@ class Database:
         CREATE TABLE IF NOT EXISTS units (
             unit_id VARCHAR PRIMARY KEY,
             name VARCHAR,
-            description VARCHAR
+            description VARCHAR,
+            image_url VARCHAR
         );
         CREATE TABLE IF NOT EXISTS tags (
             tag_id VARCHAR PRIMARY KEY,
@@ -62,7 +63,8 @@ class Database:
             max_level INT,
             is_zeta BOOLEAN,
             is_omicron BOOLEAN,
-            omicron_mode INT DEFAULT NULL
+            omicron_mode INT DEFAULT NULL,
+            image_url VARCHAR
         );
         CREATE TABLE IF NOT EXISTS unit_abilities (
             unit_id VARCHAR REFERENCES units(unit_id),

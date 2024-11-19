@@ -46,7 +46,7 @@ class DataLoader:
     
     def load_units(self):
         query = '''
-        INSERT INTO units (unit_id, name, description) VALUES (%s, %s, %s)
+        INSERT INTO units (unit_id, name, description, image_url) VALUES (%s, %s, %s, %s)
         ON CONFLICT (unit_id) DO UPDATE SET
         name = excluded.name,
         description = excluded.description;
@@ -60,8 +60,9 @@ class DataLoader:
             
             name = self.localization[unit['nameKey']]
             desc = self.localization[unit['descKey']]
+            imageUrl = unit['thumbnailName']
             
-            self.cursor.execute(query, (unitId, name, desc))
+            self.cursor.execute(query, (unitId, name, desc, imageUrl))
             processedUnits.add(unitId)
 
         self.connection.commit()
@@ -74,7 +75,7 @@ class DataLoader:
         '''
 
         for tag in self.gameData['category']:
-            if not tag['visible']:
+            if not tag['visible'] or tag['id'] == 'eventonly':
                 continue
 
             id = tag['id']
@@ -114,7 +115,8 @@ class DataLoader:
         SELECT unit_id FROM units
         '''
         insertAbilities = '''
-        INSERT INTO abilities (skill_id, name, description, max_level, is_zeta, is_omicron, omicron_mode) VALUES (%s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO abilities (skill_id, name, description, max_level, is_zeta, is_omicron, omicron_mode, image_url) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (skill_id) DO UPDATE SET
         description = excluded.description
         '''
@@ -124,6 +126,7 @@ class DataLoader:
         '''
         self.cursor.execute(selectUnits)
         playableUnits = {row[0] for row in self.cursor.fetchall()}
+        processedUnits = set()
 
         #Lookup dictionaries for helper function
         skills = {s['id']: s for s in self.gameData['skill']}
@@ -131,13 +134,26 @@ class DataLoader:
 
         for unit in self.gameData['units']:
             unitId = unit['baseId']
-            if unitId not in playableUnits:
+            if unitId not in playableUnits or unitId in processedUnits:
                 continue
             skillIds = [s['skillId'] for s in unit['skillReference']] + [s['skillReference'][0]['skillId'] for s in unit['crew']]
             for id in skillIds:
                 skillData = self.__get_skill_data(id, skills, abilities)
                 self.cursor.execute(insertAbilities, skillData)
                 self.cursor.execute(insertUnitsAbilities, (unitId, id))
+            processedUnits.add(unitId)
+            
+            #For galactic legend ultimate abilities
+            if "galactic_legend" not in unit['categoryId']:
+                continue
+            for a in unit['limitBreakRef']:
+                if a['abilityId'].startswith('ultimate'):
+                    ability = abilities[a['abilityId']]
+                    name = self.localization[ability['nameKey']]
+                    desc = self.localization[ability['descKey']]
+                    imageUrl = ability['icon']
+                    self.cursor.execute(insertAbilities, (ability['id'], name, desc, 1, False, False, None, imageUrl))
+                    self.cursor.execute(insertUnitsAbilities, (unitId, ability['id']))
 
         self.connection.commit()
             
@@ -152,4 +168,5 @@ class DataLoader:
         name = self.localization[ability['nameKey']]
         descKey = ability['tier'][-1]['descKey']
         desc = self.localization[descKey]
-        return id, name, desc, maxLevel, isZeta, isOmicron, omiMode
+        imageUrl = ability["icon"]
+        return ability['id'], name, desc, maxLevel, isZeta, isOmicron, omiMode, imageUrl
