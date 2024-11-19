@@ -9,7 +9,7 @@ import re
 db = helpers.db
 bot = commands.Bot(command_prefix='?', intents=discord.Intents.all())
 
-@bot.hybrid_group(name='unit', description='Get a unit\'s basic info', fallback="get")
+@bot.hybrid_group(name="unit", description="Get a unit's basic info", fallback="get")
 async def unit(ctx, unit):
     queryTags = '''SELECT t.name FROM tags t
     JOIN unit_tags ut ON ut.tag_id = t.tag_id
@@ -82,6 +82,32 @@ async def tags(ctx, tag):
     embed = discord.Embed(title=f"Units with {tag} tag", description="\n".join([unit[0] for unit in units]))
     #TODO: Add each unit's tags
     await ctx.send(embed=embed)
+
+@bot.hybrid_command(name="allycode", description="Add an allycode to your Discord account")
+async def allycode(ctx, allycode: int):
+    checkQuery = '''
+    SELECT * FROM users WHERE allycode = %s
+    '''
+    db.cursor.execute(checkQuery, (allycode,))
+    result = db.cursor.fetchall()
+    if len(result) == 0:
+        query = '''
+        INSERT INTO users (allycode) VALUES (%s)
+        '''
+        db.cursor.execute(query, (allycode,))
+        db.connection.commit()
+        await ctx.send(f"Allycode {allycode} is now linked to your account")
+    else:
+        await ctx.send(f"Your allycode is already in use")
+
+
+@bot.hybrid_group(name="fleet", description="Get player's fleet payout time", fallback="get")
+async def fleet(ctx, allycode: int = None, name: str = None):
+    pass
+
+@fleet.command(name="add", description="Add a player to your fleet shard")
+async def add(ctx, allycode: int):
+    pass
 
 @bot.event
 async def on_ready():
