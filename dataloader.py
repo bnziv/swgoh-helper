@@ -11,19 +11,21 @@ class DataLoader:
     def check_version(self):
         version = self.comlink.get_latest_game_data_version()['game']
         query = '''
-        INSERT INTO game_version (version) VALUES (%s)
-        ON CONFLICT (version) DO NOTHING;'''
-        self.cursor.execute(query, (version,))
-        query = '''
         SELECT version FROM game_version ORDER BY timestamp DESC LIMIT 1
         '''
         self.cursor.execute(query)
-        result = self.db.cursor.fetchone()[0]
-        self.connection.commit()
-        if result == version:
-            return True
+        result = self.db.cursor.fetchone()
+        if not result or result[0] != version:
+            print("New version detected, updating database")
+            query = '''
+            INSERT INTO game_version (version) VALUES (%s)
+            ON CONFLICT (version) DO NOTHING;
+            '''
+            self.cursor.execute(query, (version,))
+            self.connection.commit()
+            self.load_data()
         else:
-            return False
+            print("Game data is up to date")
         
     def get_localization(self):
         data = self.comlink.get_localization(locale="ENG_US", unzip=True, enums=True)['Loc_ENG_US.txt']
@@ -115,10 +117,16 @@ class DataLoader:
         SELECT unit_id FROM units
         '''
         insertAbilities = '''
-        INSERT INTO abilities (skill_id, name, description, max_level, is_zeta, is_omicron, omicron_mode, image_url) 
+        INSERT INTO abilities (ability_id, name, description, max_level, is_zeta, is_omicron, omicron_mode, image_url) 
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (skill_id) DO UPDATE SET
-        description = excluded.description
+        ON CONFLICT (ability_id) DO UPDATE SET
+        name = excluded.name,
+        description = excluded.description,
+        max_level = excluded.max_level,
+        is_zeta = excluded.is_zeta,
+        is_omicron = excluded.is_omicron,
+        omicron_mode = excluded.omicron_mode,
+        image_url = excluded.image_url;
         '''
         insertUnitsAbilities = '''
         INSERT INTO unit_abilities (unit_id, ability_id) VALUES (%s, %s)
@@ -140,7 +148,7 @@ class DataLoader:
             for id in skillIds:
                 skillData = self.__get_skill_data(id, skills, abilities)
                 self.cursor.execute(insertAbilities, skillData)
-                self.cursor.execute(insertUnitsAbilities, (unitId, id))
+                self.cursor.execute(insertUnitsAbilities, (unitId, skillData[0]))
             processedUnits.add(unitId)
             
             #For galactic legend ultimate abilities

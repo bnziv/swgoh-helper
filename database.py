@@ -20,12 +20,15 @@ class Database:
             )
             print("Connected to database.")
         except psycopg2.OperationalError as e:
-            print("App database doesn't exist. Creating as 'swgoh'...")
-            self.connection = psycopg2.connect(
-                dbname='postgres',
-                user=self.user,
-                password=self.password
-            )
+            print("App database doesn't exist. Attempting to create 'swgoh'")
+            try: self.connection = psycopg2.connect(
+                    dbname='postgres',
+                    user=self.user,
+                    password=self.password
+                )
+            except:
+                print("Failed to connect to database or 'postgres' doesn't exist")
+                exit(1)
             self.connection.autocommit = True
             self.cursor = self.connection.cursor()
             self.cursor.execute("CREATE DATABASE swgoh")
@@ -52,12 +55,12 @@ class Database:
             name VARCHAR
         );
         CREATE TABLE IF NOT EXISTS unit_tags (
-            unit_id VARCHAR REFERENCES units(unit_id),
-            tag_id VARCHAR REFERENCES tags(tag_id),
+            unit_id VARCHAR REFERENCES units(unit_id) ON UPDATE CASCADE ON DELETE CASCADE,
+            tag_id VARCHAR REFERENCES tags(tag_id) ON UPDATE CASCADE ON DELETE CASCADE,
             PRIMARY KEY (unit_id, tag_id)
         );
         CREATE TABLE IF NOT EXISTS abilities (
-            skill_id VARCHAR PRIMARY KEY,
+            ability_id VARCHAR PRIMARY KEY,
             name VARCHAR,
             description VARCHAR,
             max_level INT,
@@ -67,8 +70,8 @@ class Database:
             image_url VARCHAR
         );
         CREATE TABLE IF NOT EXISTS unit_abilities (
-            unit_id VARCHAR REFERENCES units(unit_id),
-            ability_id VARCHAR REFERENCES abilities(skill_id),
+            unit_id VARCHAR REFERENCES units(unit_id) ON UPDATE CASCADE ON DELETE CASCADE,
+            ability_id VARCHAR REFERENCES abilities(ability_id) ON UPDATE CASCADE ON DELETE CASCADE,
             PRIMARY KEY (unit_id, ability_id)
         );
         '''
