@@ -1,5 +1,7 @@
 from database import Database
 from swgoh_comlink import SwgohComlink
+from queries import Queries
+queries = Queries()
 
 class DataLoader:
     def __init__(self, database: Database, comlink: SwgohComlink):
@@ -17,11 +19,7 @@ class DataLoader:
         result = self.db.cursor.fetchone()
         if not result or result[0] != version:
             print("New version detected, updating database")
-            query = '''
-            INSERT INTO game_version (version) VALUES (%s)
-            ON CONFLICT (version) DO NOTHING;
-            '''
-            self.cursor.execute(query, (version,))
+            self.cursor.execute(queries.insert_game_version, (version,))
             self.connection.commit()
             self.load_data()
         else:
@@ -47,12 +45,6 @@ class DataLoader:
         self.load_abilities()
     
     def load_units(self):
-        query = '''
-        INSERT INTO units (unit_id, name, description, image_url) VALUES (%s, %s, %s, %s)
-        ON CONFLICT (unit_id) DO UPDATE SET
-        name = excluded.name,
-        description = excluded.description;
-        '''
         processedUnits = set()
 
         for unit in self.gameData['units']:
@@ -64,25 +56,19 @@ class DataLoader:
             desc = self.localization[unit['descKey']]
             imageUrl = unit['thumbnailName']
             
-            self.cursor.execute(query, (unitId, name, desc, imageUrl))
+            self.cursor.execute(queries.insert_unit, (unitId, name, desc, imageUrl))
             processedUnits.add(unitId)
 
         self.connection.commit()
 
     def load_tags(self):
-        query = '''
-        INSERT INTO tags (tag_id, name) VALUES (%s, %s)
-        ON CONFLICT (tag_id) DO UPDATE SET
-        name = excluded.name;
-        '''
-
         for tag in self.gameData['category']:
             if not tag['visible'] or tag['id'] == 'eventonly':
                 continue
 
             id = tag['id']
             name = self.localization[tag['descKey']]
-            self.cursor.execute(query, (id, name))
+            self.cursor.execute(queries.insert_tag, (id, name))
 
         self.connection.commit()
 
@@ -93,10 +79,6 @@ class DataLoader:
         self.cursor.execute("SELECT unit_id from units")
         playableUnits = {row[0] for row in self.cursor.fetchall()}
 
-        query = '''
-        INSERT INTO unit_tags (unit_id, tag_id) VALUES (%s, %s)
-        ON CONFLICT (unit_id, tag_id) DO NOTHING
-        '''
         processedUnits = set()
 
         for unit in self.gameData['units']:
@@ -106,7 +88,7 @@ class DataLoader:
 
             for tag in unit['categoryId']:
                 if tag in visibleTags:
-                    self.cursor.execute(query, (unitId, tag))
+                    self.cursor.execute(queries.insert_unit_tag, (unitId, tag))
 
             processedUnits.add(unitId)
 
@@ -115,22 +97,6 @@ class DataLoader:
     def load_abilities(self):
         selectUnits = '''
         SELECT unit_id FROM units
-        '''
-        insertAbilities = '''
-        INSERT INTO abilities (ability_id, name, description, max_level, is_zeta, is_omicron, omicron_mode, image_url) 
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (ability_id) DO UPDATE SET
-        name = excluded.name,
-        description = excluded.description,
-        max_level = excluded.max_level,
-        is_zeta = excluded.is_zeta,
-        is_omicron = excluded.is_omicron,
-        omicron_mode = excluded.omicron_mode,
-        image_url = excluded.image_url;
-        '''
-        insertUnitsAbilities = '''
-        INSERT INTO unit_abilities (unit_id, ability_id) VALUES (%s, %s)
-        ON CONFLICT (unit_id, ability_id) DO NOTHING
         '''
         self.cursor.execute(selectUnits)
         playableUnits = {row[0] for row in self.cursor.fetchall()}
@@ -147,8 +113,8 @@ class DataLoader:
             skillIds = [s['skillId'] for s in unit['skillReference']] + [s['skillReference'][0]['skillId'] for s in unit['crew']]
             for id in skillIds:
                 skillData = self.__get_skill_data(id, skills, abilities)
-                self.cursor.execute(insertAbilities, skillData)
-                self.cursor.execute(insertUnitsAbilities, (unitId, skillData[0]))
+                self.cursor.execute(queries.insert_ability, skillData)
+                self.cursor.execute(queries.insert_unit_ability, (unitId, skillData[0]))
             processedUnits.add(unitId)
             
             #For galactic legend ultimate abilities
@@ -160,8 +126,8 @@ class DataLoader:
                     name = self.localization[ability['nameKey']]
                     desc = self.localization[ability['descKey']]
                     imageUrl = ability['icon']
-                    self.cursor.execute(insertAbilities, (ability['id'], name, desc, 1, False, False, None, imageUrl))
-                    self.cursor.execute(insertUnitsAbilities, (unitId, ability['id']))
+                    self.cursor.execute(queries.insert_ability, (ability['id'], name, desc, 1, False, False, None, imageUrl))
+                    self.cursor.execute(queries.insert_unit_ability, (unitId, ability['id']))
 
         self.connection.commit()
             
