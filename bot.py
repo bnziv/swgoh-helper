@@ -1,12 +1,17 @@
+import datetime
 import os
 import discord
 from discord import app_commands
 from discord.ext import commands
+from datetime import datetime, timedelta
+import pytz
 from swgoh_comlink import SwgohComlink
 import helpers
 from unidecode import unidecode
 import re
+from queries import Queries
 
+queries = Queries()
 comlink = SwgohComlink()
 db = helpers.db
 bot = commands.Bot(command_prefix='?', intents=discord.Intents.all())
@@ -85,14 +90,16 @@ async def tags(ctx, tag):
     #TODO: Add each unit's tags
     await ctx.send(embed=embed)
 
-@bot.tree.command(name="allycode", description="Add an allycode to your Discord account")
+@bot.tree.command(name="allycode")
 async def allycode(ctx, allycode: int):
-    embed = discord.Embed()
-    if len(str(allycode)) != 9:
-        embed.description = "Allycode must be 9 digits long"
-        await ctx.response.send_message(embed=embed)
-        return
+    """
+    Add an allycode to your Discord account
     
+    Args:
+        allycode (int): The allycode of the player
+    """
+
+    embed = discord.Embed()
     checkQuery = '''
     SELECT * FROM users WHERE allycode = %s
     '''
@@ -103,9 +110,9 @@ async def allycode(ctx, allycode: int):
         await ctx.response.send_message(embed=embed)
         return
     
-    result = comlink.get_player_arena(allycode=allycode, player_details_only=True)
-    if "message" in result.keys():
-        embed.description = f"An account with allycode {allycode} could not be found"
+    result = helpers.allycode_check(allycode)
+    if type(result) == str:
+        embed.description = result
         await ctx.response.send_message(embed=embed)
         return
 
@@ -121,10 +128,39 @@ async def allycode(ctx, allycode: int):
 
 
 @bot.hybrid_group(name="fleet", description="Get player's fleet payout time", fallback="get")
-async def fleet(ctx, allycode: int = None, name: str = None):
-    pass
+async def fleet(ctx, allycode: int = None, name: str = None, all: bool = False):
+    """
+    Get player's fleet payout time
 
-@fleet.command(name="add", description="Add a player to your fleet shard")
+    Args:
+        allycode (int): The allycode of the player
+        name (str): The name of the player (if they've been added to your shard)
+        all (bool): Get all players' fleet payout times
+    """
+    embed = discord.Embed()
+    if allycode is None and name is None and not all:
+        embed.description = "Please provide an allycode or name\nNames will only work if they've been added to your shard"
+        await ctx.send(embed=embed)
+        return
+    result = helpers.allycode_check(allycode)
+    if type(result) == str:
+        embed.description = result
+        await ctx.send(embed=embed)
+        return
+    
+    #TODO: Add all functionality
+    name = result['name']
+    offset = result['localTimeZoneOffsetMinutes']
+    payout = datetime.now(pytz.utc).replace(hour=19, minute=0, second=0, microsecond=0) - timedelta(minutes=offset)
+    embed.title = "Fleet payout time"
+    embed.add_field(
+        name = f"**{name}** ({allycode})",
+        value = f"<t:%d:t>" % int(payout.timestamp())
+        )
+    await ctx.send(embed=embed)
+    
+
+@fleet.command(name="add")
 async def add(ctx, allycode: int):
     pass
 

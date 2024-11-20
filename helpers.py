@@ -1,9 +1,10 @@
 import discord
 from discord import app_commands
 from database import Database
+from swgoh_comlink import SwgohComlink
 
 db = Database()
-
+comlink = SwgohComlink()
 db.cursor.execute("SELECT name FROM units ORDER BY name;")
 units = [app_commands.Choice(name=unit[0], value=unit[0]) for unit in db.cursor.fetchall()]
 
@@ -15,6 +16,16 @@ tags = [app_commands.Choice(name=tag[0], value=tag[0]) for tag in db.cursor.fetc
 
 async def tag_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     return [tag for tag in tags if current.lower() in tag.name.lower()][:25]
+
+def allycode_check(allycode):
+    if len(str(allycode)) != 9:
+        return "Allycode must be 9 digits long"
+    
+    result = comlink.get_player_arena(allycode=allycode, player_details_only=True)
+    if "message" in result.keys():
+        return f"An account with allycode {allycode} could not be found"
+    
+    return result
 
 class EmbedPages(discord.ui.View):
     def __init__(self, embeds):
