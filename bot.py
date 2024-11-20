@@ -2,10 +2,12 @@ import os
 import discord
 from discord import app_commands
 from discord.ext import commands
+from swgoh_comlink import SwgohComlink
 import helpers
 from unidecode import unidecode
 import re
 
+comlink = SwgohComlink()
 db = helpers.db
 bot = commands.Bot(command_prefix='?', intents=discord.Intents.all())
 
@@ -83,22 +85,39 @@ async def tags(ctx, tag):
     #TODO: Add each unit's tags
     await ctx.send(embed=embed)
 
-@bot.hybrid_command(name="allycode", description="Add an allycode to your Discord account")
+@bot.tree.command(name="allycode", description="Add an allycode to your Discord account")
 async def allycode(ctx, allycode: int):
+    embed = discord.Embed()
+    if len(str(allycode)) != 9:
+        embed.description = "Allycode must be 9 digits long"
+        await ctx.response.send_message(embed=embed)
+        return
+    
     checkQuery = '''
     SELECT * FROM users WHERE allycode = %s
     '''
     db.cursor.execute(checkQuery, (allycode,))
     result = db.cursor.fetchall()
-    if len(result) == 0:
-        query = '''
-        INSERT INTO users (allycode) VALUES (%s)
-        '''
-        db.cursor.execute(query, (allycode,))
-        db.connection.commit()
-        await ctx.send(f"Allycode {allycode} is now linked to your account")
-    else:
-        await ctx.send(f"Your allycode is already in use")
+    if len(result) != 0:
+        embed.description = "This allycode is already linked to a Discord account"
+        await ctx.response.send_message(embed=embed)
+        return
+    
+    result = comlink.get_player_arena(allycode=allycode, player_details_only=True)
+    if "message" in result.keys():
+        embed.description = f"An account with allycode {allycode} could not be found"
+        await ctx.response.send_message(embed=embed)
+        return
+
+    #TODO: Add confirmation
+    name = result['name']
+    discord_id = ctx.author.id
+    query = '''
+    INSERT INTO users (allycode, discord_id) VALUES (%s, %s)
+    '''
+    db.cursor.execute(query, (allycode, discord_id))
+    db.connection.commit()
+    await ctx.send(f"**{name}** ({allycode}) is now linked to your Discord account")
 
 
 @bot.hybrid_group(name="fleet", description="Get player's fleet payout time", fallback="get")

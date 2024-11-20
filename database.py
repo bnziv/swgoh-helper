@@ -75,8 +75,8 @@ class Database:
             PRIMARY KEY (unit_id, ability_id)
         );
         CREATE TABLE IF NOT EXISTS users (
-            discord_id INT PRIMARY KEY,
-            allycode INT
+            allycode INT PRIMARY KEY,
+            discord_id INT
         );
         CREATE TABLE IF NOT EXISTS fleet_shard_players (
             allycode INT PRIMARY KEY,
