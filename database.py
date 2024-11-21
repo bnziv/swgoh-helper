@@ -76,7 +76,7 @@ class Database:
         );
         CREATE TABLE IF NOT EXISTS users (
             allycode INT PRIMARY KEY,
-            discord_id INT
+            discord_id VARCHAR(20)
         );
         CREATE TABLE IF NOT EXISTS fleet_shard_players (
             allycode INT PRIMARY KEY,

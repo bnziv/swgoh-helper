@@ -14,6 +14,7 @@ from queries import Queries
 queries = Queries()
 comlink = SwgohComlink()
 db = helpers.db
+fleetpayout = helpers.fleetpayout
 bot = commands.Bot(command_prefix='?', intents=discord.Intents.all())
 
 @bot.hybrid_group(name="unit", description="Get a unit's basic info", fallback="get")
@@ -118,16 +119,16 @@ async def allycode(ctx, allycode: int):
 
     #TODO: Add confirmation
     name = result['name']
-    discord_id = ctx.author.id
+    discord_id = ctx.user.id
     query = '''
     INSERT INTO users (allycode, discord_id) VALUES (%s, %s)
     '''
     db.cursor.execute(query, (allycode, discord_id))
     db.connection.commit()
-    await ctx.send(f"**{name}** ({allycode}) is now linked to your Discord account")
+    await ctx.response.send_message(f"**{name}** ({allycode}) is now linked to your Discord account")
 
 
-@bot.hybrid_group(name="fleet", description="Get player's fleet payout time", fallback="get")
+@bot.hybrid_group(name="fleet", description="Get a player's fleet payout time", fallback="get")
 async def fleet(ctx, allycode: int = None, name: str = None, all: bool = False):
     """
     Get player's fleet payout time
@@ -135,27 +136,63 @@ async def fleet(ctx, allycode: int = None, name: str = None, all: bool = False):
     Args:
         allycode (int): The allycode of the player
         name (str): The name of the player (if they've been added to your shard)
-        all (bool): Get all players' fleet payout times
+        all (bool): Get all players' fleet payout times in your shard
     """
-    embed = discord.Embed()
+    embed = discord.Embed(title="Fleet Payout Time")
     if allycode is None and name is None and not all:
         embed.description = "Please provide an allycode or name\nNames will only work if they've been added to your shard"
         await ctx.send(embed=embed)
         return
-    result = helpers.allycode_check(allycode)
-    if type(result) == str:
-        embed.description = result
+    
+    def calculate_payout(offset):
+        payout = datetime.now(pytz.utc).replace(hour=19, minute=0, second=0, microsecond=0) - timedelta(minutes=offset)
+        return f"<t:%d:t>" % int(payout.timestamp())
+    
+    #All flag
+    if all:
+        result = fleetpayout.get_all_payouts()
+        if len(result) == 0:
+            embed.description = "Your fleet shard is empty"
+        else:
+            for allycode, name, offset in result:
+                embed.add_field(
+                    name = f"**{name}** ({allycode})",
+                    value = calculate_payout(offset)
+                    )
         await ctx.send(embed=embed)
         return
     
-    #TODO: Add all functionality
-    name = result['name']
-    offset = result['localTimeZoneOffsetMinutes']
-    payout = datetime.now(pytz.utc).replace(hour=19, minute=0, second=0, microsecond=0) - timedelta(minutes=offset)
-    embed.title = "Fleet payout time"
+    #Name provided
+    if name:
+        result = fleetpayout.get_payout(name=name)
+        if len(result) == 0:
+            embed.description = f"'{name}' could not be found in your fleet shard"
+        else:
+            for allycode, name, offset in result:
+                embed.add_field(
+                    name = f"**{name}** ({allycode})",
+                    value = calculate_payout(offset)
+                    )
+        await ctx.send(embed=embed)
+        return
+    
+    #Allycode provided
+    result = fleetpayout.get_payout(allycode=allycode)
+    if len(result) != 0:
+        name = result[0][1]
+        offset = result[0][2]
+    else:
+        result = helpers.allycode_check(allycode)
+        if type(result) == str:
+            embed.description = result
+            await ctx.send(embed=embed)
+            return
+        name = result['name']
+        offset = result['localTimeZoneOffsetMinutes']
+        embed.description = "(This player is not in your fleet shard)"
     embed.add_field(
         name = f"**{name}** ({allycode})",
-        value = f"<t:%d:t>" % int(payout.timestamp())
+        value = calculate_payout(offset)
         )
     await ctx.send(embed=embed)
     

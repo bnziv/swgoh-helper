@@ -2,9 +2,13 @@ import discord
 from discord import app_commands
 from database import Database
 from swgoh_comlink import SwgohComlink
+from fleetpayout import FleetPayout
+from dataloader import DataLoader
 
 db = Database()
 comlink = SwgohComlink()
+dataloader = DataLoader(db, comlink)
+fleetpayout = FleetPayout(db, comlink)
 db.cursor.execute("SELECT name FROM units ORDER BY name;")
 units = [app_commands.Choice(name=unit[0], value=unit[0]) for unit in db.cursor.fetchall()]
 
