@@ -199,7 +199,50 @@ async def fleet(ctx, allycode: int = None, name: str = None, all: bool = False):
 
 @fleet.command(name="add")
 async def add(ctx, allycode: int):
-    pass
+    """
+    Add a player to your fleet shard
+    
+    Args:
+        allycode (int): The allycode of the player
+    """
+    embed = discord.Embed()
+    result = helpers.allycode_check(allycode)
+    if type(result) == str:
+        embed.description = result
+        await ctx.send(embed=embed)
+        return
+    name = result['name']
+    offset = result['localTimeZoneOffsetMinutes']
+    db.cursor.execute('''SELECT allycode from users WHERE discord_id = %s''', (str(ctx.author.id),))
+    result = db.cursor.fetchall()
+    if len(result) == 0:
+        embed.description = "Your Discord account is not linked to an allycode"
+        await ctx.send(embed=embed)
+    else:
+        account_allycode = result[0][0]
+        fleetpayout.add_player(allycode, name, offset, account_allycode)
+        embed.description = f"**{name}** ({allycode}) has been added to your fleet shard"
+    await ctx.send(embed=embed)
+
+@fleet.command(name="remove")
+async def remove(ctx, allycode: int):
+    """
+    Remove a player from your fleet shard
+    
+    Args:
+        allycode (int): The allycode of the player
+    """
+    embed = discord.Embed()
+    if len(str(allycode)) != 9:
+        embed.description = "Allycode must be 9 digits long"
+        await ctx.send(embed=embed)
+        return
+    
+    if fleetpayout.remove_player(allycode):
+        embed.description = f"**{allycode}** has been removed from your fleet shard"
+    else:
+        embed.description = f"**{allycode}** could not be found in your fleet shard"
+    await ctx.send(embed=embed)
 
 @bot.event
 async def on_ready():

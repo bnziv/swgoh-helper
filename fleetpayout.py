@@ -16,8 +16,19 @@ class FleetPayout:
         time_offset = excluded.time_offset,
         part_of = excluded.part_of;
         '''
-        self.db.cursor.execute(query, (allycode, name, offset, owner))
-        self.db.connection.commit()
+        self.cursor.execute(query, (allycode, name, offset, owner))
+        self.connection.commit()
+
+    def remove_player(self, allycode):
+        query = '''
+        DELETE FROM fleet_shard_players WHERE allycode = %s
+        '''
+        self.cursor.execute(query, (allycode,))
+        self.connection.commit()
+        if self.cursor.rowcount == 0:
+            return False
+        return True
+
     
     def get_payout(self, allycode = None, name = None):
         if not allycode and not name:
