@@ -1,5 +1,8 @@
+import datetime
+from datetime import datetime, timedelta
 import discord
 from discord import app_commands
+import pytz
 from database import Database
 from swgoh_comlink import SwgohComlink
 from fleetpayout import FleetPayout
@@ -30,6 +33,10 @@ def allycode_check(allycode):
         return f"An account with allycode {allycode} could not be found"
     
     return result
+
+def calculate_payout(offset):
+        payout = datetime.now(pytz.utc).replace(hour=19, minute=0, second=0, microsecond=0) - timedelta(minutes=offset)
+        return payout.timestamp()
 
 class EmbedPages(discord.ui.View):
     def __init__(self, embeds):

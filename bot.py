@@ -1,8 +1,9 @@
+import asyncio
 import datetime
 import os
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 from datetime import datetime, timedelta
 import pytz
 from swgoh_comlink import SwgohComlink
@@ -144,10 +145,6 @@ async def fleet(ctx, allycode: int = None, name: str = None, all: bool = False):
         await ctx.send(embed=embed)
         return
     
-    def calculate_payout(offset):
-        payout = datetime.now(pytz.utc).replace(hour=19, minute=0, second=0, microsecond=0) - timedelta(minutes=offset)
-        return f"<t:%d:t>" % int(payout.timestamp())
-    
     #All flag
     if all:
         result = fleetpayout.get_all_payouts()
@@ -157,7 +154,7 @@ async def fleet(ctx, allycode: int = None, name: str = None, all: bool = False):
             for allycode, name, offset in result:
                 embed.add_field(
                     name = f"**{name}** ({allycode})",
-                    value = calculate_payout(offset)
+                    value = f"<t:{helpers.calculate_payout(offset)}:t>"
                     )
         await ctx.send(embed=embed)
         return
@@ -171,7 +168,7 @@ async def fleet(ctx, allycode: int = None, name: str = None, all: bool = False):
             for allycode, name, offset in result:
                 embed.add_field(
                     name = f"**{name}** ({allycode})",
-                    value = calculate_payout(offset)
+                    value = f"<t:{helpers.calculate_payout(offset)}:t>"
                     )
         await ctx.send(embed=embed)
         return
@@ -192,7 +189,7 @@ async def fleet(ctx, allycode: int = None, name: str = None, all: bool = False):
         embed.description = "(This player is not in your fleet shard)"
     embed.add_field(
         name = f"**{name}** ({allycode})",
-        value = calculate_payout(offset)
+        value = f"<t:{helpers.calculate_payout(offset)}:t>"
         )
     await ctx.send(embed=embed)
     
@@ -244,9 +241,38 @@ async def remove(ctx, allycode: int):
         embed.description = f"**{allycode}** could not be found in your fleet shard"
     await ctx.send(embed=embed)
 
+@tasks.loop(hours=24)
+async def start_notify_payouts():
+    #TODO: Add columns to database to store name and offset, preventing unnecessary API calls
+    query = '''SELECT allycode, discord_id FROM users'''
+    db.cursor.execute(query)
+    result = db.cursor.fetchall()
+    for allycode, discord_id in result:
+        asyncio.create_task(notify_payout(allycode, discord_id))
+        
+async def notify_payout(allycode, discord_id):
+    embed = discord.Embed()
+    result = comlink.get_player_arena(allycode=allycode, player_details_only=True)
+    name = result['name']
+    offset = result['localTimeZoneOffsetMinutes']
+    current = int(datetime.now().timestamp())
+    user = bot.get_user(int(discord_id))
+    payout_time = helpers.calculate_payout(offset)
+    notify_time = payout_time - 3600
+    if current >= payout_time:
+        delay = payout_time - current + 86400 - 3600
+    elif current >= notify_time:
+        delay = 0
+    else:
+        delay = notify_time - current
+    await asyncio.sleep(delay)
+    #TODO: Add embed output and call listener for rank increase
+    await user.send(embed=embed)
+
 @bot.event
 async def on_ready():
     await bot.tree.sync()
     print('Bot started')
+    start_notify_payouts.start()
 
 bot.run(os.getenv('BOT_TOKEN'))
