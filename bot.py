@@ -267,7 +267,32 @@ async def notify_payout(allycode, discord_id):
         delay = notify_time - current
     await asyncio.sleep(delay)
     #TODO: Add embed output and call listener for rank increase
+    embed.description = "Start climbing"
     await user.send(embed=embed)
+    asyncio.create_task(rank_listener(allycode, discord_id, payout_time))
+
+async def rank_listener(allycode, discord_id, payout_time):
+    embed = discord.Embed()
+    current_rank = comlink.get_player_arena(allycode=allycode, player_details_only=True)['pvpProfile'][1]['rank']
+    user = bot.get_user(int(discord_id))
+    battles = 0
+    while datetime.now().timestamp() < payout_time and battles < 5:
+        new_rank = comlink.get_player_arena(allycode=allycode, player_details_only=True)['pvpProfile'][1]['rank']
+        if new_rank < current_rank:
+            battles += 1
+            await user.send("New rank")
+            current_rank = new_rank
+            if datetime.now().timestamp() + 590 > payout_time:
+                #TODO: Sleep 2 minutes (or less) before payout
+                pass
+            else:
+                await asyncio.sleep(590) #10 seconds until next available battle
+            
+            #TODO: Add embed output
+            embed.description = "Your next battle is now available"
+            await user.send(embed=embed)
+        
+        await asyncio.sleep(3)
 
 @bot.event
 async def on_ready():
