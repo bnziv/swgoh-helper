@@ -92,7 +92,7 @@ async def tags(ctx, tag):
     #TODO: Add each unit's tags
     await ctx.send(embed=embed)
 
-@bot.tree.command(name="allycode")
+@bot.hybrid_group(name="allycode", description="Add an allycode to your Discord account", fallback="add")
 async def allycode(ctx, allycode: int):
     """
     Add an allycode to your Discord account
@@ -120,13 +120,51 @@ async def allycode(ctx, allycode: int):
 
     #TODO: Add confirmation
     name = result['name']
+    offset = result['localTimeZoneOffsetMinutes']
     discord_id = ctx.user.id
     query = '''
-    INSERT INTO users (allycode, discord_id) VALUES (%s, %s)
+    INSERT INTO users (allycode, discord_id, name, time_offset) VALUES (%s, %s, %s, %s)
     '''
-    db.cursor.execute(query, (allycode, discord_id))
+    db.cursor.execute(query, (allycode, discord_id, name, offset))
     db.connection.commit()
     await ctx.response.send_message(f"**{name}** ({allycode}) is now linked to your Discord account")
+    
+@allycode.command(name="remove", description="remove an allycode from your Discord account")
+async def allycode_remove(ctx, allycode: int):
+    """
+    Remove an allycode from your Discord account
+
+    Args:
+        allycode (int): The allycode of the player
+    """
+    query = '''
+    DELETE FROM users WHERE discord_id = %s
+    '''
+    db.cursor.execute(query, (allycode, str(ctx.author.id),))
+    db.connection.commit()
+    if db.cursor.rowcount == 0:
+        await ctx.response.send_message("This allycode is not linked to your Discord account")
+    else:
+        await ctx.response.send_message("This allycode has been removed from your Discord account")
+    
+    
+@allycode.command(name="view", description="list all allycodes linked to your Discord account")
+async def view(ctx):
+    """
+    Get all allycodes linked to your Discord account
+    """
+    query = '''
+    SELECT allycode, name FROM users WHERE discord_id = %s
+    '''
+    db.cursor.execute(query, (str(ctx.author.id),))
+    result = db.cursor.fetchall()
+    embed = discord.Embed(title="Your allycodes")
+    if len(result) == 0:
+        embed.description = "You have no allycodes linked to your Discord account"
+    else:
+        for allycode, name in result:
+            embed.add_field(name=allycode, value=name, inline=False)
+    await ctx.send(embed=embed)
 
 
 @bot.hybrid_group(name="fleet", description="Get a player's fleet payout time", fallback="get")
@@ -214,7 +252,6 @@ async def add(ctx, allycode: int):
     result = db.cursor.fetchall()
     if len(result) == 0:
         embed.description = "Your Discord account is not linked to an allycode"
-        await ctx.send(embed=embed)
     else:
         account_allycode = result[0][0]
         fleetpayout.add_player(allycode, name, offset, account_allycode)
@@ -243,18 +280,15 @@ async def remove(ctx, allycode: int):
 
 @tasks.loop(hours=24)
 async def start_notify_payouts():
-    #TODO: Add columns to database to store name and offset, preventing unnecessary API calls
-    query = '''SELECT allycode, discord_id FROM users'''
+    #TODO: When bot is deployed, sleep until 12AM UTC and pass the start time to the inner functions
+    query = '''SELECT allycode, discord_id, name, time_offset FROM users'''
     db.cursor.execute(query)
     result = db.cursor.fetchall()
-    for allycode, discord_id in result:
-        asyncio.create_task(notify_payout(allycode, discord_id))
+    for user in result:
+        asyncio.create_task(notify_payout(*user))
         
-async def notify_payout(allycode, discord_id):
+async def notify_payout(allycode, discord_id, name, offset):
     embed = discord.Embed()
-    result = comlink.get_player_arena(allycode=allycode, player_details_only=True)
-    name = result['name']
-    offset = result['localTimeZoneOffsetMinutes']
     current = int(datetime.now().timestamp())
     user = bot.get_user(int(discord_id))
     payout_time = helpers.calculate_payout(offset)
@@ -266,12 +300,12 @@ async def notify_payout(allycode, discord_id):
     else:
         delay = notify_time - current
     await asyncio.sleep(delay)
-    #TODO: Add embed output and call listener for rank increase
-    embed.description = "Start climbing"
-    await user.send(embed=embed)
-    asyncio.create_task(rank_listener(allycode, discord_id, payout_time))
+    embed.description = f"Fleet payout for **{name}** ({allycode}) is <t:{payout_time}:R>\nSending alerts for next battle availablity until payout"
+    start_message = await user.send(embed=embed)
+    asyncio.create_task(rank_listener(allycode, discord_id, name, payout_time, start_message))
 
-async def rank_listener(allycode, discord_id, payout_time):
+async def rank_listener(allycode, discord_id, name, payout_time, start_message):
+    next_battle_message = warning_message = None
     embed = discord.Embed()
     current_rank = comlink.get_player_arena(allycode=allycode, player_details_only=True)['pvpProfile'][1]['rank']
     user = bot.get_user(int(discord_id))
@@ -280,19 +314,26 @@ async def rank_listener(allycode, discord_id, payout_time):
         new_rank = comlink.get_player_arena(allycode=allycode, player_details_only=True)['pvpProfile'][1]['rank']
         if new_rank < current_rank:
             battles += 1
-            await user.send("New rank")
             current_rank = new_rank
-            if datetime.now().timestamp() + 590 > payout_time:
-                #TODO: Sleep 2 minutes (or less) before payout
-                pass
-            else:
-                await asyncio.sleep(590) #10 seconds until next available battle
-            
-            #TODO: Add embed output
-            embed.description = "Your next battle is now available"
-            await user.send(embed=embed)
+            if datetime.now().timestamp() + 590 < payout_time: #Sufficient time for another battle
+                await asyncio.sleep(590)
+                embed.description = f"{name}'s next battle is available"
+
+                if next_battle_message:
+                    await next_battle_message.delete()
+                next_battle_message = await user.send(embed=embed)
         
+        if not warning_message and datetime.now().timestamp() + 90 >= payout_time: #90 seconds before payout
+            warning_message = await user.send(embed=discord.Embed(description=f"{name}'s payout is soon"))
+
         await asyncio.sleep(3)
+    
+    if warning_message:
+        await warning_message.delete()
+    if next_battle_message:
+        await next_battle_message.delete()
+    embed = discord.Embed(title=f"**{name}** finished at rank {current_rank}", timestamp=datetime.now())
+    await start_message.edit(embed=embed)
 
 @bot.event
 async def on_ready():

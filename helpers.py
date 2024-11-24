@@ -36,7 +36,7 @@ def allycode_check(allycode):
 
 def calculate_payout(offset):
         payout = datetime.now(pytz.utc).replace(hour=19, minute=0, second=0, microsecond=0) - timedelta(minutes=offset)
-        return payout.timestamp()
+        return int(payout.timestamp())
 
 class EmbedPages(discord.ui.View):
     def __init__(self, embeds):
