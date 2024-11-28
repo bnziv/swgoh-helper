@@ -74,6 +74,18 @@ class Database:
             ability_id VARCHAR REFERENCES abilities(ability_id) ON UPDATE CASCADE ON DELETE CASCADE,
             PRIMARY KEY (unit_id, ability_id)
         );
+        CREATE TABLE IF NOT EXISTS users (
+            allycode INT PRIMARY KEY,
+            discord_id VARCHAR(20),
+            name VARCHAR,
+            time_offset INT
+        );
+        CREATE TABLE IF NOT EXISTS fleet_shard_players (
+            allycode INT PRIMARY KEY,
+            name VARCHAR,
+            time_offset INT,
+            part_of INT REFERENCES users(allycode)
+        );
         '''
         self.cursor.execute(query)
         self.connection.commit()
