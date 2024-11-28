@@ -13,6 +13,8 @@ comlink = SwgohComlink()
 dataloader = DataLoader(db, comlink)
 fleetpayout = FleetPayout(db, comlink)
 
+localization = dataloader.get_localization()
+
 db.cursor.execute("SELECT name FROM units ORDER BY name;")
 units = [app_commands.Choice(name=unit[0], value=unit[0]) for unit in db.cursor.fetchall()]
 async def unit_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
@@ -34,8 +36,26 @@ def allycode_check(allycode):
     return result
 
 def calculate_payout(offset):
-        payout = datetime.now(pytz.utc).replace(hour=19, minute=0, second=0, microsecond=0) - timedelta(minutes=offset)
-        return int(payout.timestamp())
+    payout = datetime.now(pytz.utc).replace(hour=19, minute=0, second=0, microsecond=0) - timedelta(minutes=offset)
+    return int(payout.timestamp())
+
+def get_events():
+    """
+    Returns a list of all events
+    """
+    result = comlink.get_events(enums=True)['gameEvent']
+    result = [r for r in result if 'challenge' not in r['id'] and 'shipevent_SC' not in r['id'] and 'GA2' not in r['id'] and r['type'] == "SCHEDULED"]
+    events = []
+    for e in result:
+        event = {
+            "name": localization[e["nameKey"]],
+            "desc": localization[e["descKey"]],
+            "startTime": int(e['instance'][0]['startTime']),
+            "endTime": int(e['instance'][0]['endTime']),
+            "image": e['image']
+        }
+        events.append(event)
+    return events
 
 class EmbedPages(discord.ui.View):
     def __init__(self, embeds):
