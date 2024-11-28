@@ -12,15 +12,14 @@ db = Database()
 comlink = SwgohComlink()
 dataloader = DataLoader(db, comlink)
 fleetpayout = FleetPayout(db, comlink)
+
 db.cursor.execute("SELECT name FROM units ORDER BY name;")
 units = [app_commands.Choice(name=unit[0], value=unit[0]) for unit in db.cursor.fetchall()]
-
 async def unit_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     return [unit for unit in units if current.lower() in unit.name.lower()][:25]
 
 db.cursor.execute("SELECT name FROM tags ORDER by name;")
 tags = [app_commands.Choice(name=tag[0], value=tag[0]) for tag in db.cursor.fetchall()]
-
 async def tag_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     return [tag for tag in tags if current.lower() in tag.name.lower()][:25]
 

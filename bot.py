@@ -2,100 +2,20 @@ import asyncio
 import datetime
 import os
 import discord
-from discord import app_commands
 from discord.ext import commands, tasks
-from datetime import datetime, timedelta
-import pytz
-from swgoh_comlink import SwgohComlink
+from datetime import datetime
 import helpers
-from unidecode import unidecode
-import re
-from queries import Queries
 
 cogs = []
 for file in os.listdir('./cogs'):
     if file.endswith('.py'):
         cogs.append(file[:-3])
 
-queries = Queries()
-comlink = SwgohComlink()
+comlink = helpers.comlink
 db = helpers.db
 fleetpayout = helpers.fleetpayout
+
 bot = commands.Bot(command_prefix='?', intents=discord.Intents.all())
-
-@bot.hybrid_group(name="allycode", description="Add an allycode to your Discord account", fallback="add")
-async def allycode(ctx, allycode: int):
-    """
-    Add an allycode to your Discord account
-    
-    Args:
-        allycode (int): The allycode of the player
-    """
-
-    embed = discord.Embed()
-    checkQuery = '''
-    SELECT * FROM users WHERE allycode = %s
-    '''
-    db.cursor.execute(checkQuery, (allycode,))
-    result = db.cursor.fetchall()
-    if len(result) != 0:
-        embed.description = "This allycode is already linked to a Discord account"
-        await ctx.response.send_message(embed=embed)
-        return
-    
-    result = helpers.allycode_check(allycode)
-    if type(result) == str:
-        embed.description = result
-        await ctx.response.send_message(embed=embed)
-        return
-
-    #TODO: Add confirmation
-    name = result['name']
-    offset = result['localTimeZoneOffsetMinutes']
-    discord_id = ctx.user.id
-    query = '''
-    INSERT INTO users (allycode, discord_id, name, time_offset) VALUES (%s, %s, %s, %s)
-    '''
-    db.cursor.execute(query, (allycode, discord_id, name, offset))
-    db.connection.commit()
-    await ctx.response.send_message(f"**{name}** ({allycode}) is now linked to your Discord account")
-    
-@allycode.command(name="remove", description="remove an allycode from your Discord account")
-async def allycode_remove(ctx, allycode: int):
-    """
-    Remove an allycode from your Discord account
-
-    Args:
-        allycode (int): The allycode of the player
-    """
-    query = '''
-    DELETE FROM users WHERE discord_id = %s
-    '''
-    db.cursor.execute(query, (allycode, str(ctx.author.id),))
-    db.connection.commit()
-    if db.cursor.rowcount == 0:
-        await ctx.response.send_message("This allycode is not linked to your Discord account")
-    else:
-        await ctx.response.send_message("This allycode has been removed from your Discord account")
-    
-    
-@allycode.command(name="view", description="list all allycodes linked to your Discord account")
-async def view(ctx):
-    """
-    Get all allycodes linked to your Discord account
-    """
-    query = '''
-    SELECT allycode, name FROM users WHERE discord_id = %s
-    '''
-    db.cursor.execute(query, (str(ctx.author.id),))
-    result = db.cursor.fetchall()
-    embed = discord.Embed(title="Your allycodes")
-    if len(result) == 0:
-        embed.description = "You have no allycodes linked to your Discord account"
-    else:
-        for allycode, name in result:
-            embed.add_field(name=allycode, value=name, inline=False)
-    await ctx.send(embed=embed)
 
 @tasks.loop(hours=24)
 async def start_notify_payouts():
