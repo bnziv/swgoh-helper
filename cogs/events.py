@@ -6,6 +6,7 @@ from datetime import datetime
 import discord
 from discord import app_commands
 from discord.ext import commands
+from titlecase import titlecase
 
 comlink = helpers.comlink
 
@@ -14,6 +15,16 @@ class Events(commands.Cog):
         self.bot = bot
     
     events = app_commands.Group(name="events", description="Events commands")
+
+    def capitalize_title(self, title: str):
+        title = titlecase(title)
+        roman_numeral_pattern = r'\b(?:I{1,3}|IV|VI{0,3}|IX|X{0,3})\b'
+
+        def roman_numeral(word):
+            return word.upper() if re.fullmatch(roman_numeral_pattern, word.upper()) else word
+        
+        words = [roman_numeral(word) for word in title.split()]
+        return ' '.join(words)
 
     @events.command(name="current")
     @app_commands.checks.cooldown(1,60)
@@ -34,7 +45,7 @@ class Events(commands.Cog):
                 title, subtitle = event['name'].split('\\n')
                 subtitle = re.sub(r'\[c\]\[.*?\]|\[-\]\[/c\]', '', subtitle)
                 desc = event['desc']
-                embed.add_field(name=f"{title} - {subtitle}",
+                embed.add_field(name=f"{self.capitalize_title(title)} - {subtitle}",
                                 value=f"Ends <t:{event['endTime']//1000}:R>",
                                 inline=False
                 )
@@ -45,7 +56,7 @@ class Events(commands.Cog):
                 title, subtitle = event['name'].split('\\n')
                 subtitle = re.sub(r'\[c\]\[.*?\]|\[-\]\[/c\]', '', subtitle)
                 desc = event['desc']
-                embed = discord.Embed(title=f"{title}\n{subtitle}", description=desc)
+                embed = discord.Embed(title=f"{self.capitalize_title(title)}\n{subtitle}", description=desc)
                 embed.add_field(name="Start Time", value=f"<t:{event['startTime']//1000}>")
                 embed.add_field(name="End Time", value=f"<t:{event['endTime']//1000}>")
                 embed.set_image(url=f"https://game-assets.swgoh.gg/textures/{event['image']}.png")
