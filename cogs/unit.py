@@ -15,8 +15,14 @@ class Unit(commands.Cog):
 
     unit = app_commands.Group(name="unit", description="Unit commands")
 
-    @unit.command(name="get", description="Get a unit's basic info")
+    @unit.command(name="get")
     async def get(self, interaction: discord.Interaction, unit: str):
+        """
+        Get a unit's basic info
+        
+        Args:
+            unit (str): The name of the unit
+        """
         queryTags = '''SELECT t.name FROM tags t
         JOIN unit_tags ut ON ut.tag_id = t.tag_id
         JOIN units u ON u.unit_id = ut.unit_id
@@ -41,8 +47,14 @@ class Unit(commands.Cog):
         await interaction.response.send_message(embed=embed)
     get.autocomplete("unit")(helpers.unit_autocomplete)
 
-    @unit.command(name="abilities", description="Get a unit's abilities")
+    @unit.command(name="abilities")
     async def abilities(self, interaction: discord.Interaction, unit: str):
+        """
+        Get a unit's abilities
+        
+        Args:
+            unit (str): The name of the unit
+        """
         queryAbilities = '''
         SELECT a.name, a.description, ua.ability_id, a.image_url FROM abilities a
         JOIN unit_abilities ua ON ua.ability_id = a.skill_id
@@ -75,8 +87,14 @@ class Unit(commands.Cog):
         await interaction.response.send_message(embed=embeds[0], view=helpers.EmbedPages(embeds))
     abilities.autocomplete("unit")(helpers.unit_autocomplete)
 
-    @unit.command(name="tags", description="Get all units with a specific tag")
+    @unit.command(name="tags")
     async def tags(self, interaction: discord.Interaction, tag: str):
+        """
+        Get all units with a specified tag
+        
+        Args:
+            tag (str): The tag to lookup units by
+        """
         queryTags = '''SELECT u.name FROM tags t
         JOIN unit_tags ut on ut.tag_id = t.tag_id
         JOIN units u on u.unit_id = ut.unit_id

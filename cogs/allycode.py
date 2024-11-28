@@ -49,7 +49,7 @@ class Allycode(commands.Cog):
         db.connection.commit()
         await interaction.response.send_message(f"**{name}** ({allycode}) is now linked to your Discord account")
 
-    @allycode.command(name="get", description="Get all allycodes linked to your Discord account")
+    @allycode.command(name="get")
     async def get(self, interaction: discord.Interaction):
         """
         Get all allycodes linked to your Discord account
@@ -67,7 +67,7 @@ class Allycode(commands.Cog):
                 embed.add_field(name=allycode, value=name, inline=False)
         await interaction.response.send_message(embed=embed)
     
-    @allycode.command(name="remove", description="remove an allycode from your Discord account")
+    @allycode.command(name="remove")
     async def allycode_remove(self, interaction: discord.Interaction, allycode: int):
         """
         Remove an allycode from your Discord account

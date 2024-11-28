@@ -14,7 +14,7 @@ class Fleet(commands.Cog):
     
     fleet = app_commands.Group(name="fleet", description="Fleet arena commands")
 
-    @fleet.command(name="get", description="Get a player's fleet payout time")
+    @fleet.command(name="get")
     async def get(self, interaction: discord.Interaction, allycode: int = None, name: str = None, all: bool = False):
         """
         Get player's fleet payout time
