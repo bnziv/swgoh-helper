@@ -97,118 +97,6 @@ async def view(ctx):
             embed.add_field(name=allycode, value=name, inline=False)
     await ctx.send(embed=embed)
 
-
-@bot.hybrid_group(name="fleet", description="Get a player's fleet payout time", fallback="get")
-async def fleet(ctx, allycode: int = None, name: str = None, all: bool = False):
-    """
-    Get player's fleet payout time
-
-    Args:
-        allycode (int): The allycode of the player
-        name (str): The name of the player (if they've been added to your shard)
-        all (bool): Get all players' fleet payout times in your shard
-    """
-    embed = discord.Embed(title="Fleet Payout Time")
-    if allycode is None and name is None and not all:
-        embed.description = "Please provide an allycode or name\nNames will only work if they've been added to your shard"
-        await ctx.send(embed=embed)
-        return
-    
-    #All flag
-    if all:
-        result = fleetpayout.get_all_payouts()
-        if len(result) == 0:
-            embed.description = "Your fleet shard is empty"
-        else:
-            for allycode, name, offset in result:
-                embed.add_field(
-                    name = f"**{name}** ({allycode})",
-                    value = f"<t:{helpers.calculate_payout(offset)}:t>"
-                    )
-        await ctx.send(embed=embed)
-        return
-    
-    #Name provided
-    if name:
-        result = fleetpayout.get_payout(name=name)
-        if len(result) == 0:
-            embed.description = f"'{name}' could not be found in your fleet shard"
-        else:
-            for allycode, name, offset in result:
-                embed.add_field(
-                    name = f"**{name}** ({allycode})",
-                    value = f"<t:{helpers.calculate_payout(offset)}:t>"
-                    )
-        await ctx.send(embed=embed)
-        return
-    
-    #Allycode provided
-    result = fleetpayout.get_payout(allycode=allycode)
-    if len(result) != 0:
-        name = result[0][1]
-        offset = result[0][2]
-    else:
-        result = helpers.allycode_check(allycode)
-        if type(result) == str:
-            embed.description = result
-            await ctx.send(embed=embed)
-            return
-        name = result['name']
-        offset = result['localTimeZoneOffsetMinutes']
-        embed.description = "(This player is not in your fleet shard)"
-    embed.add_field(
-        name = f"**{name}** ({allycode})",
-        value = f"<t:{helpers.calculate_payout(offset)}:t>"
-        )
-    await ctx.send(embed=embed)
-    
-
-@fleet.command(name="add")
-async def add(ctx, allycode: int):
-    """
-    Add a player to your fleet shard
-    
-    Args:
-        allycode (int): The allycode of the player
-    """
-    embed = discord.Embed()
-    result = helpers.allycode_check(allycode)
-    if type(result) == str:
-        embed.description = result
-        await ctx.send(embed=embed)
-        return
-    name = result['name']
-    offset = result['localTimeZoneOffsetMinutes']
-    db.cursor.execute('''SELECT allycode from users WHERE discord_id = %s''', (str(ctx.author.id),))
-    result = db.cursor.fetchall()
-    if len(result) == 0:
-        embed.description = "Your Discord account is not linked to an allycode"
-    else:
-        account_allycode = result[0][0]
-        fleetpayout.add_player(allycode, name, offset, account_allycode)
-        embed.description = f"**{name}** ({allycode}) has been added to your fleet shard"
-    await ctx.send(embed=embed)
-
-@fleet.command(name="remove")
-async def remove(ctx, allycode: int):
-    """
-    Remove a player from your fleet shard
-    
-    Args:
-        allycode (int): The allycode of the player
-    """
-    embed = discord.Embed()
-    if len(str(allycode)) != 9:
-        embed.description = "Allycode must be 9 digits long"
-        await ctx.send(embed=embed)
-        return
-    
-    if fleetpayout.remove_player(allycode):
-        embed.description = f"**{allycode}** has been removed from your fleet shard"
-    else:
-        embed.description = f"**{allycode}** could not be found in your fleet shard"
-    await ctx.send(embed=embed)
-
 @tasks.loop(hours=24)
 async def start_notify_payouts():
     #TODO: When bot is deployed, sleep until 12AM UTC and pass the start time to the inner functions
@@ -283,7 +171,7 @@ async def update(interaction: discord.Interaction):
     for cog in cogs:
         await bot.reload_extension(f"cogs.{cog}")
     await interaction.response.send_message("Cogs loaded")
-    asyncio.sleep(3)
+    await asyncio.sleep(3)
     await interaction.delete_original_response()
 
 bot.run(os.getenv('BOT_TOKEN'))
