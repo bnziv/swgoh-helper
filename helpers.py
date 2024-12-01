@@ -41,7 +41,7 @@ def calculate_payout(offset):
 
 def get_events():
     """
-    Returns a list of all events
+    Returns a list of all scheduled events
     """
     result = comlink.get_events(enums=True)['gameEvent']
     result = [r for r in result if 'challenge' not in r['id'] and 'shipevent_SC' not in r['id'] and 'GA2' not in r['id'] and r['type'] == "SCHEDULED"]
@@ -50,8 +50,8 @@ def get_events():
         event = {
             "name": localization[e["nameKey"]],
             "desc": localization[e["descKey"]],
-            "startTime": int(e['instance'][0]['startTime']),
-            "endTime": int(e['instance'][0]['endTime']),
+            "startTime": int(e['instance'][0]['startTime'])//1000,
+            "endTime": int(e['instance'][0]['endTime'])//1000,
             "image": e['image']
         }
         events.append(event)
