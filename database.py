@@ -79,7 +79,8 @@ class Database:
             discord_id VARCHAR(20),
             name VARCHAR,
             time_offset INT,
-            notify_events BOOLEAN
+            notify_events BOOLEAN,
+            notify_energy BOOLEAN
         );
         CREATE TABLE IF NOT EXISTS fleet_shard_players (
             allycode INT PRIMARY KEY,
