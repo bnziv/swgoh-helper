@@ -12,6 +12,10 @@ import asyncio
 comlink = helpers.comlink
 db = helpers.db
 
+class EventsEmbed(discord.Embed):
+    def __init__(self, title=None, description=None):
+        super().__init__(title=title, description=description, color=discord.Color.orange())
+
 class Events(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -42,7 +46,7 @@ class Events(commands.Cog):
         events = [e for e in helpers.get_events() if currentTime >= e['startTime'] and currentTime < e['endTime']]
         events = sorted(events, key=lambda e: e['endTime'])
         if not embeds:
-            embed = discord.Embed(title="Currently Running Events")
+            embed = EventsEmbed(title="Currently Running Events")
             for event in events:
                 title, subtitle = event['name'].split('\\n')
                 subtitle = re.sub(r'\[c\]\[.*?\]|\[-\]\[/c\]', '', subtitle)
@@ -58,7 +62,7 @@ class Events(commands.Cog):
                 title, subtitle = event['name'].split('\\n')
                 subtitle = re.sub(r'\[c\]\[.*?\]|\[-\]\[/c\]', '', subtitle)
                 desc = event['desc']
-                embed = discord.Embed(title=f"{self.capitalize_title(title)}\n{subtitle}", description=desc)
+                embed = EventsEmbed(title=f"{self.capitalize_title(title)}\n{subtitle}", description=desc)
                 embed.add_field(name="Start Time", value=f"<t:{event['startTime']}>")
                 embed.add_field(name="End Time", value=f"<t:{event['endTime']}>")
                 embed.set_image(url=f"https://game-assets.swgoh.gg/textures/{event['image']}.png")
@@ -85,7 +89,7 @@ class Events(commands.Cog):
         events = [e for e in helpers.get_events() if currentTime < e['startTime']]
         events = sorted(events, key=lambda e: e['endTime'])
         if not embeds:
-            embed = discord.Embed(title="Upcoming Events")
+            embed = EventsEmbed(title="Upcoming Events")
             for event in events:
                 title, subtitle = event['name'].split('\\n')
                 subtitle = re.sub(r'\[c\]\[.*?\]|\[-\]\[/c\]', '', subtitle)
@@ -101,7 +105,7 @@ class Events(commands.Cog):
                 title, subtitle = event['name'].split('\\n')
                 subtitle = re.sub(r'\[c\]\[.*?\]|\[-\]\[/c\]', '', subtitle)
                 desc = event['desc']
-                embed = discord.Embed(title=f"{self.capitalize_title(title)}\n{subtitle}", description=desc)
+                embed = EventsEmbed(title=f"{self.capitalize_title(title)}\n{subtitle}", description=desc)
                 embed.add_field(name="Start Time", value=f"<t:{event['startTime']}>")
                 embed.add_field(name="End Time", value=f"<t:{event['endTime']}>")
                 embed.set_image(url=f"https://game-assets.swgoh.gg/textures/{event['image']}.png")
@@ -124,7 +128,7 @@ class Events(commands.Cog):
             db.cursor.execute("SELECT DISTINCT discord_id FROM users WHERE notify_events IS TRUE")
             users = [self.bot.get_user(int(id[0])) for id in db.cursor.fetchall()]
 
-            embed = discord.Embed(description="The following events started: ")
+            embed = EventsEmbed(description="The following events started: ")
             for event in events:
                 title, subtitle = event['name'].split('\\n')
                 subtitle = re.sub(r'\[c\]\[.*?\]|\[-\]\[/c\]', '', subtitle)

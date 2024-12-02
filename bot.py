@@ -14,7 +14,7 @@ for file in os.listdir('./cogs'):
 comlink = helpers.comlink
 db = helpers.db
 fleetpayout = helpers.fleetpayout
-
+embedColor = discord.Color.dark_purple()
 bot = commands.Bot(command_prefix='?', intents=discord.Intents.all())
 
 @tasks.loop(hours=24)
@@ -27,7 +27,7 @@ async def start_notify_payouts():
         asyncio.create_task(notify_payout(*user))
         
 async def notify_payout(allycode, discord_id, name, offset):
-    embed = discord.Embed()
+    embed = discord.Embed(color=embedColor)
     current = int(datetime.now().timestamp())
     user = bot.get_user(int(discord_id))
     payout_time = helpers.calculate_payout(offset)
@@ -39,19 +39,19 @@ async def notify_payout(allycode, discord_id, name, offset):
     else:
         delay = notify_time - current
     await asyncio.sleep(delay)
-    embed.description = f"Fleet payout for **{name}** ({allycode}) is <t:{payout_time}:R>\nSending alerts for next battle availablity until payout"
+    embed.description = f"Fleet payout for **{name}** ({allycode}) is <t:{payout_time}:R>\nSending alerts for next available battle until payout"
     start_message = await user.send(embed=embed)
     asyncio.create_task(rank_listener(allycode, discord_id, name, payout_time, start_message))
 
 async def rank_listener(allycode, discord_id, name, payout_time, start_message):
     next_battle_message = warning_message = None
-    embed = discord.Embed()
+    embed = discord.Embed(color=embedColor)
     current_rank = comlink.get_player_arena(allycode=allycode, player_details_only=True)['pvpProfile'][1]['rank']
     user = bot.get_user(int(discord_id))
     battles = 0
-    while datetime.now().timestamp() < payout_time and battles < 5:
+    while datetime.now().timestamp() < payout_time:
         new_rank = comlink.get_player_arena(allycode=allycode, player_details_only=True)['pvpProfile'][1]['rank']
-        if new_rank < current_rank:
+        if new_rank < current_rank and battles < 5:
             battles += 1
             current_rank = new_rank
             if datetime.now().timestamp() + 590 < payout_time: #Sufficient time for another battle
@@ -63,7 +63,7 @@ async def rank_listener(allycode, discord_id, name, payout_time, start_message):
                 next_battle_message = await user.send(embed=embed)
         
         if not warning_message and datetime.now().timestamp() + 90 >= payout_time: #90 seconds before payout
-            warning_message = await user.send(embed=discord.Embed(description=f"{name}'s payout is soon"))
+            warning_message = await user.send(embed=discord.Embed(description=f"{name}'s payout is soon", color=embedColor))
 
         await asyncio.sleep(3)
     
@@ -71,7 +71,7 @@ async def rank_listener(allycode, discord_id, name, payout_time, start_message):
         await warning_message.delete()
     if next_battle_message:
         await next_battle_message.delete()
-    embed = discord.Embed(title=f"**{name}** finished at rank {current_rank}", timestamp=datetime.now())
+    embed = discord.Embed(title=f"**{name}** finished at rank {current_rank}", timestamp=datetime.now(), color=embedColor)
     await start_message.edit(embed=embed)
 
 @bot.event

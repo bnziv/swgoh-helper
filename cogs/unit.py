@@ -9,6 +9,10 @@ from discord.ext import commands
 
 db = helpers.db
 
+class UnitEmbed(discord.Embed):
+    def __init__(self, title=None, description=None):
+        super().__init__(title=title, description=description, color=discord.Color.blue())
+
 class Unit(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -34,7 +38,7 @@ class Unit(commands.Cog):
         db.cursor.execute(queryUnit, (unit,))
         unit = db.cursor.fetchone()
 
-        embed = discord.Embed(title=f"{unit[0]}", description=unit[1])
+        embed = UnitEmbed(title=f"{unit[0]}", description=unit[1])
         embed.add_field(name="Tags", value=(", ".join(tags)), inline=False)
         embed.set_thumbnail(url=f"https://game-assets.swgoh.gg/textures/{unit[2]}.png")
 
@@ -78,7 +82,7 @@ class Unit(commands.Cog):
                 title = "Reinforcement"
             description = ability[1].replace(r'\n', '\n')
             description = re.sub(r'\[c\]\[.*?\]|\[-\]\[/c\]', '**', description)
-            embed = discord.Embed(title=f"{unit}\n{title} - {ability[0]}", description=description)
+            embed = UnitEmbed(title=f"{unit}\n{title} - {ability[0]}", description=description)
             embed.set_thumbnail(url=f"https://game-assets.swgoh.gg/textures/{ability[3]}.png")
             embeds.append(embed)
             #TODO: Add ability iszeta, isomicron
@@ -102,7 +106,7 @@ class Unit(commands.Cog):
         '''
         db.cursor.execute(queryTags, (tag,))
         units = db.cursor.fetchall()
-        embed = discord.Embed(title=f"Units with {tag} tag", description="\n".join([unit[0] for unit in units]))
+        embed = UnitEmbed(title=f"Units with {tag} tag", description="\n".join([unit[0] for unit in units]))
         #TODO: Add each unit's tags
         await interaction.response.send_message(embed=embed)
     tags.autocomplete("tag")(helpers.tag_autocomplete)

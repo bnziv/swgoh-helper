@@ -7,6 +7,10 @@ from discord.ext import commands
 
 db = helpers.db
 
+class AllycodeEmbed(discord.Embed):
+    def __init__(self, title=None, description=None):
+        super().__init__(title=title, description=description, color=discord.Color.lighter_gray())
+
 class Allycode(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -21,7 +25,7 @@ class Allycode(commands.Cog):
         Args:
             allycode (int): The allycode of the SWGOH account
         """
-        embed = discord.Embed()
+        embed = AllycodeEmbed()
         checkQuery = '''
         SELECT * FROM users WHERE allycode = %s
         '''
@@ -47,7 +51,8 @@ class Allycode(commands.Cog):
         '''
         db.cursor.execute(query, (allycode, discord_id, name, offset))
         db.connection.commit()
-        await interaction.response.send_message(f"**{name}** ({allycode}) is now linked to your Discord account")
+        embed.description = f"**{name}** ({allycode}) is now linked to your Discord account"
+        await interaction.response.send_message(embed=embed)
 
     @allycode.command(name="get")
     async def get(self, interaction: discord.Interaction):
@@ -59,7 +64,7 @@ class Allycode(commands.Cog):
         '''
         db.cursor.execute(query, (str(interaction.user.id),))
         result = db.cursor.fetchall()
-        embed = discord.Embed(title="Your allycodes")
+        embed = AllycodeEmbed(title="Your allycodes")
         if len(result) == 0:
             embed.description = "You have no allycodes linked to your Discord account"
         else:

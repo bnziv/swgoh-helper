@@ -8,6 +8,10 @@ from discord.ext import commands
 db = helpers.db
 fleetpayout = helpers.fleetpayout
 
+class FleetEmbed(discord.Embed):
+    def __init__(self, title=None, description=None):
+        super().__init__(title=title, description=description, color=discord.Color.purple())
+
 class Fleet(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -24,7 +28,7 @@ class Fleet(commands.Cog):
             name (str): The name of the player (if they've been added to your shard)
             all (bool): Get all players' fleet payout times in your shard
         """
-        embed = discord.Embed(title="Fleet Payout Time")
+        embed = FleetEmbed(title="Fleet Payout Time")
         if allycode is None and name is None and not all:
             embed.description = "Please provide an allycode or name\nNames will only work if they've been added to your shard"
             await interaction.response.send_message(embed=embed)
@@ -87,7 +91,7 @@ class Fleet(commands.Cog):
         Args:
             allycode (int): The allycode of the player
         """
-        embed = discord.Embed()
+        embed = FleetEmbed()
         result = helpers.allycode_check(allycode)
         if type(result) == str:
             embed.description = result
@@ -100,6 +104,7 @@ class Fleet(commands.Cog):
         if len(result) == 0:
             embed.description = "Your Discord account is not linked to an allycode"
         else:
+            #TODO: Add multi-account functionality (if len(result) > 1)
             account_allycode = result[0][0]
             fleetpayout.add_player(allycode, name, offset, account_allycode)
             embed.description = f"**{name}** ({allycode}) has been added to your fleet shard"
@@ -113,7 +118,7 @@ class Fleet(commands.Cog):
         Args:
             allycode (int): The allycode of the player
         """
-        embed = discord.Embed()
+        embed = FleetEmbed()
         if len(str(allycode)) != 9:
             embed.description = "Allycode must be 9 digits long"
             await interaction.response.send_message(embed=embed)
