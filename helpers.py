@@ -1,5 +1,5 @@
 import datetime
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import discord
 from discord import app_commands
 import pytz
@@ -36,12 +36,12 @@ def allycode_check(allycode):
     return result
 
 def calculate_payout(offset):
-    payout = datetime.now(pytz.utc).replace(hour=19, minute=0, second=0, microsecond=0) - timedelta(minutes=offset)
+    payout = datetime.now(timezone.utc).replace(hour=19, minute=0, second=0, microsecond=0) - timedelta(minutes=offset)
     return int(payout.timestamp())
 
 def calculate_reset(offset):
-    payout = datetime.now(pytz.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(minutes=offset)
-    return int(payout.timestamp())
+    reset = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(minutes=offset)
+    return int(reset.timestamp())
 
 def get_events():
     """
