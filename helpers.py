@@ -39,6 +39,10 @@ def calculate_payout(offset):
     payout = datetime.now(pytz.utc).replace(hour=19, minute=0, second=0, microsecond=0) - timedelta(minutes=offset)
     return int(payout.timestamp())
 
+def calculate_reset(offset):
+    payout = datetime.now(pytz.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(minutes=offset)
+    return int(payout.timestamp())
+
 def get_events():
     """
     Returns a list of all scheduled events
