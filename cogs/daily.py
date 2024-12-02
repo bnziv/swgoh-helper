@@ -4,7 +4,7 @@ import helpers
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import asyncio
 
 db = helpers.db
@@ -48,6 +48,13 @@ class Dailies(commands.Cog):
         for user in db.cursor.fetchall():
             asyncio.create_task(self.energy_listener(*user))
             asyncio.create_task(self.dailies_listener(*user))
+
+    @start_listeners.before_loop
+    async def before_start_listeners(self):
+        now = datetime.now()
+        next_day = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        delay = (next_day - now).total_seconds()
+        await asyncio.sleep(delay)
 
     @commands.Cog.listener()
     async def on_ready(self):
