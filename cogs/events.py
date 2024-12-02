@@ -63,7 +63,8 @@ class Events(commands.Cog):
                 embed.add_field(name="End Time", value=f"<t:{event['endTime']}>")
                 embed.set_image(url=f"https://game-assets.swgoh.gg/textures/{event['image']}.png")
                 embeds.append(embed)
-            await interaction.edit_original_response(content=None, embed=embeds[0], view=helpers.EmbedPages(embeds))
+            view = helpers.EmbedPages(embeds, interaction=interaction)
+            await interaction.edit_original_response(content=None, embed=embeds[0], view=view)
     
     @current.error
     async def current_error(self, interaction: discord.Interaction, error):
@@ -105,7 +106,8 @@ class Events(commands.Cog):
                 embed.add_field(name="End Time", value=f"<t:{event['endTime']}>")
                 embed.set_image(url=f"https://game-assets.swgoh.gg/textures/{event['image']}.png")
                 embeds.append(embed)
-            await interaction.edit_original_response(content=None, embed=embeds[0], view=helpers.EmbedPages(embeds))
+            view = helpers.EmbedPages(embeds, interaction=interaction)
+            await interaction.edit_original_response(content=None, embed=embeds[0], view=view)
     
     @upcoming.error
     async def upcoming_error(self, interaction: discord.Interaction, error):

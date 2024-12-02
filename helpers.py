@@ -62,8 +62,9 @@ def get_events():
     return events
 
 class EmbedPages(discord.ui.View):
-    def __init__(self, embeds):
-        super().__init__()
+    def __init__(self, embeds, interaction):
+        super().__init__(timeout=120)
+        self.interaction = interaction
         self.embeds = embeds
         self.current_page = 0
 
@@ -96,6 +97,11 @@ class EmbedPages(discord.ui.View):
     async def done(self, interaction):
         self.clear_items()
         await interaction.response.edit_message(view=self)
+        self.stop()
+    
+    async def on_timeout(self):
+        self.clear_items()
+        await self.interaction.edit_original_response(view=self)
         self.stop()
 
     async def update_message(self, interaction):

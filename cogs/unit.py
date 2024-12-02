@@ -57,14 +57,14 @@ class Unit(commands.Cog):
         """
         queryAbilities = '''
         SELECT a.name, a.description, ua.ability_id, a.image_url FROM abilities a
-        JOIN unit_abilities ua ON ua.ability_id = a.skill_id
+        JOIN unit_abilities ua ON ua.ability_id = a.ability_id
         JOIN units u on u.unit_id = ua.unit_id
         WHERE u.name = %s
         ORDER BY CASE 
             WHEN ua.ability_id LIKE 'basic%%' THEN 1
             WHEN ua.ability_id LIKE 'special%%' THEN 2
             WHEN ua.ability_id LIKE 'leader%%' THEN 3
-            WHEN ua.ability_id LIKE 'unique%%' AND ua.ability_id NOT LIKE '%%GALACTICLEGEND%%' THEN 4
+            WHEN ua.ability_id LIKE 'unique%%' AND ua.ability_id NOT ILIKE '%%galacticlegend%%' THEN 4
             WHEN ua.ability_id LIKE 'ultimate%%' THEN 6
             ELSE 5
         END, ua.ability_id;
@@ -73,18 +73,17 @@ class Unit(commands.Cog):
         abilities = db.cursor.fetchall()
         embeds = []
         for ability in abilities:
-            title = ability[2].capitalize().split('skill')[0]
+            title = ability[2].capitalize().split('ability')[0]
             if title == "Hardware":
                 title = "Reinforcement"
-            elif title.startswith("Ultimate"):
-                title = "Ultimate"
             description = ability[1].replace(r'\n', '\n')
             description = re.sub(r'\[c\]\[.*?\]|\[-\]\[/c\]', '**', description)
             embed = discord.Embed(title=f"{unit}\n{title} - {ability[0]}", description=description)
             embed.set_thumbnail(url=f"https://game-assets.swgoh.gg/textures/{ability[3]}.png")
             embeds.append(embed)
             #TODO: Add ability iszeta, isomicron
-        await interaction.response.send_message(embed=embeds[0], view=helpers.EmbedPages(embeds))
+        view = helpers.EmbedPages(embeds, interaction=interaction)
+        await interaction.response.send_message(embed=embeds[0], view=view)
     abilities.autocomplete("unit")(helpers.unit_autocomplete)
 
     @unit.command(name="tags")
