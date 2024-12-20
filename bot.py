@@ -25,7 +25,7 @@ async def start_notify_payouts():
     result = db.cursor.fetchall()
     for user in result:
         asyncio.create_task(notify_payout(*user))
-        
+
 # @start_notify_payouts.before_loop
 # async def before_start_notify_payouts():
 #     now = datetime.now(tz=timezone.utc)
@@ -100,18 +100,19 @@ async def on_ready():
 async def update(interaction: discord.Interaction):
     for cog in cogs:
         await bot.reload_extension(f"cogs.{cog}")
-        await interaction.response.send_message("Cogs loaded", delete_after=3)
+    await interaction.response.send_message("Updated", delete_after=3)
 
 @bot.tree.command(name="clear", description="(Admin) Clear the bot's last messages")
 @commands.is_owner()
 async def clear(interaction: discord.Interaction, amount: int):
+    await interaction.response.send_message("Deleting messages...", ephemeral=True)
     messages = interaction.channel.history(limit=200)
     bot_messages = [msg async for msg in messages if msg.author == bot.user]
 
     for msg in bot_messages[:amount]:
         await msg.delete()
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
 
-    await interaction.response.send_message("Deleted", delete_after=3)
+    await interaction.edit_original_response(content=f"Done")
 
 bot.run(os.getenv('BOT_TOKEN'))
