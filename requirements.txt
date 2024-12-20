@@ -1,0 +1,5 @@
+discord.py
+psycopg2-binary
+swgoh_comlink
+titlecase
+unidecode

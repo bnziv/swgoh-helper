@@ -1,10 +1,8 @@
 import psycopg2
 import os
-from dotenv import load_dotenv
 
 class Database:
     def __init__(self):
-        load_dotenv()
         self.user = os.getenv('DB_USERNAME')
         self.password = os.getenv('DB_PASSWORD')
         self.connection = None
@@ -14,9 +12,7 @@ class Database:
     def connect(self):
         try:
             self.connection = psycopg2.connect(
-                dbname='swgoh',
-                user=self.user,
-                password=self.password
+                os.getenv('DB_URL')
             )
             print("Connected to database.")
         except psycopg2.OperationalError as e:

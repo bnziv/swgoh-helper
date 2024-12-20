@@ -1,15 +1,15 @@
 import datetime
+import os
 from datetime import datetime, timedelta, timezone
 import discord
 from discord import app_commands
-import pytz
 from database import Database
 from swgoh_comlink import SwgohComlink
 from fleetpayout import FleetPayout
 from dataloader import DataLoader
 
 db = Database()
-comlink = SwgohComlink()
+comlink = SwgohComlink(os.getenv('COMLINK_URL'))
 dataloader = DataLoader(db, comlink)
 fleetpayout = FleetPayout(db, comlink)
 
