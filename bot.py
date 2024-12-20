@@ -3,7 +3,7 @@ import datetime
 import os
 import discord
 from discord.ext import commands, tasks
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import helpers
 
 cogs = []
@@ -26,6 +26,14 @@ async def start_notify_payouts():
     for user in result:
         asyncio.create_task(notify_payout(*user))
         
+# @start_notify_payouts.before_loop
+# async def before_start_notify_payouts():
+#     now = datetime.now(tz=timezone.utc)
+#     start_time = now.replace(hour=0, minute=0, second=0, microsecond=0)
+#     if now > start_time:
+#         start_time += timedelta(days=1)
+#     await asyncio.sleep((start_time - now).total_seconds())
+
 async def notify_payout(allycode, discord_id, name, offset):
     embed = discord.Embed(color=embedColor)
     current = int(datetime.now().timestamp())
@@ -51,10 +59,12 @@ async def rank_listener(allycode, discord_id, name, payout_time, start_message):
     battles = 0
     while datetime.now().timestamp() < payout_time:
         new_rank = comlink.get_player_arena(allycode=allycode, player_details_only=True)['pvpProfile'][1]['rank']
-        if new_rank < current_rank and battles < 5:
+        if new_rank < current_rank:
             battles += 1
             current_rank = new_rank
-            if datetime.now().timestamp() + 590 < payout_time: #Sufficient time for another battle
+            if datetime.now().timestamp() + 590 < payout_time and battles < 5: #Sufficient time for another battle
+                if next_battle_message:
+                    await next_battle_message.edit(embed=discord.Embed(description=f"{name}'s next battle is available in <t:{int(datetime.now().timestamp() + 590)}:R>", color=embedColor))
                 await asyncio.sleep(590)
                 embed.description = f"{name}'s next battle is available"
 
@@ -85,13 +95,23 @@ async def on_ready():
     print('Bot started')
     start_notify_payouts.start()
 
-@bot.tree.command(name="update", description="Update commands")
+@bot.tree.command(name="update", description="(Admin) Update commands")
 @commands.is_owner()
 async def update(interaction: discord.Interaction):
     for cog in cogs:
         await bot.reload_extension(f"cogs.{cog}")
-    await interaction.response.send_message("Cogs loaded")
-    await asyncio.sleep(3)
-    await interaction.delete_original_response()
+        await interaction.response.send_message("Cogs loaded", delete_after=3)
+
+@bot.tree.command(name="clear", description="(Admin) Clear the bot's last messages")
+@commands.is_owner()
+async def clear(interaction: discord.Interaction, amount: int):
+    messages = interaction.channel.history(limit=200)
+    bot_messages = [msg async for msg in messages if msg.author == bot.user]
+
+    for msg in bot_messages[:amount]:
+        await msg.delete()
+        await asyncio.sleep(2)
+
+    await interaction.response.send_message("Deleted", delete_after=3)
 
 bot.run(os.getenv('BOT_TOKEN'))
