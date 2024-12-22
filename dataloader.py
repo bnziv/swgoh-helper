@@ -126,7 +126,7 @@ class DataLoader:
                     name = self.localization[ability['nameKey']]
                     desc = self.localization[ability['descKey']]
                     imageUrl = ability['icon']
-                    self.cursor.execute(queries.insert_ability, (ability['id'], name, desc, 1, False, False, None, imageUrl))
+                    self.cursor.execute(queries.insert_ability, (ability['id'], None, name, desc, 1, False, False, None, imageUrl))
                     self.cursor.execute(queries.insert_unit_ability, (unitId, ability['id']))
 
         self.connection.commit()
@@ -143,4 +143,4 @@ class DataLoader:
         descKey = ability['tier'][-1]['descKey']
         desc = self.localization[descKey]
         imageUrl = ability["icon"]
-        return ability['id'], name, desc, maxLevel, isZeta, isOmicron, omiMode, imageUrl
+        return ability['id'], id, name, desc, maxLevel, isZeta, isOmicron, omiMode, imageUrl

@@ -61,6 +61,7 @@ class Database:
         );
         CREATE TABLE IF NOT EXISTS abilities (
             ability_id VARCHAR PRIMARY KEY,
+            skill_id VARCHAR,
             name VARCHAR,
             description VARCHAR,
             max_level INT,
@@ -87,6 +88,22 @@ class Database:
             name VARCHAR,
             time_offset INT,
             part_of INT REFERENCES users(allycode)
+        );
+        CREATE TABLE IF NOT EXISTS roster_units (
+            id VARCHAR PRIMARY KEY,
+            unit_id VARCHAR REFERENCES units(unit_id) ON DELETE CASCADE,
+            level INT,
+            star_level INT,
+            gear_level INT,
+            relic_level INT DEFAULT NULL,
+            ultimate_ability BOOLEAN DEFAULT FALSE,
+            owner INT REFERENCES users(allycode) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS roster_unit_abilities (
+            skill_id VARCHAR REFERENCES abilities(skill_id) ON DELETE CASCADE,
+            unit_id VARCHAR REFERENCES roster_units(id) ON DELETE CASCADE,
+            level INT,
+            PRIMARY KEY (skill_id, unit_id)
         );
         '''
         self.cursor.execute(query)
