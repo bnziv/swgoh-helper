@@ -35,7 +35,8 @@ class Queries:
     is_zeta = excluded.is_zeta,
     is_omicron = excluded.is_omicron,
     omicron_mode = excluded.omicron_mode,
-    image_url = excluded.image_url;
+    image_url = excluded.image_url,
+    skill_id = excluded.skill_id;
     '''
 
     insert_unit_ability = '''
@@ -63,7 +64,7 @@ class Queries:
         OR roster_units.gear_level IS DISTINCT FROM EXCLUDED.gear_level
         OR roster_units.relic_level IS DISTINCT FROM EXCLUDED.relic_level
         OR roster_units.ultimate_ability IS DISTINCT FROM EXCLUDED.ultimate_ability
-        RETURNING   roster_units.unit_id,
+        RETURNING   roster_units.id,
                     (SELECT level FROM old) AS old_level,
                     roster_units.level AS new_level,
                     (SELECT star_level FROM old) AS old_star_level,
@@ -85,7 +86,8 @@ class Queries:
         ON CONFLICT (skill_id, unit_id) DO UPDATE SET
         level = EXCLUDED.level
         WHERE roster_unit_abilities.level IS DISTINCT FROM EXCLUDED.level
-        RETURNING   roster_unit_abilities.skill_id,
+        RETURNING   roster_unit_abilities.unit_id,
+                    roster_unit_abilities.skill_id,
                     (SELECT level FROM old) AS old_level,
                     roster_unit_abilities.level AS new_level;
         '''
