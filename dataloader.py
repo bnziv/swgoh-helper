@@ -9,6 +9,9 @@ class DataLoader:
         self.connection = self.db.connection
         self.cursor = self.db.cursor
         self.comlink = comlink
+        self.gameData = self.comlink.get_game_data(include_pve_units=False)
+        self.localization = self.get_localization()
+        self.skills_dict = {s['id']: s for s in self.gameData['skill']}
     
     def check_version(self):
         version = self.comlink.get_latest_game_data_version()['game']
@@ -37,8 +40,6 @@ class DataLoader:
         return localization
 
     def load_data(self):
-        self.gameData = self.comlink.get_game_data(include_pve_units=False)
-        self.localization = self.get_localization()
         self.load_units()
         self.load_tags()
         self.load_unit_tags()
@@ -103,7 +104,7 @@ class DataLoader:
         processedUnits = set()
 
         #Lookup dictionaries for helper function
-        skills = {s['id']: s for s in self.gameData['skill']}
+        skills = self.skills_dict
         abilities = {a['id']: a for a in self.gameData['ability']}
 
         for unit in self.gameData['units']:
@@ -144,3 +145,19 @@ class DataLoader:
         desc = self.localization[descKey]
         imageUrl = ability["icon"]
         return ability['id'], id, name, desc, maxLevel, isZeta, isOmicron, omiMode, imageUrl
+    
+    def get_upgrade_skill_data(self, id, old_level, new_level):
+        zetaFlag = omicronFlag = False
+        skill = self.skills_dict[id]
+        purchased_levels = range(old_level+1, new_level+1)
+        
+        for i in purchased_levels:
+             #tier[0] is for leveling from 1 to 2, tier[1] is for leveling from 2 to 3, etc
+            previous_level = skill['tier'][i-3 if i > 2 else 0]
+            ability = skill['tier'][i-2]
+
+            if ability['isZetaTier'] and not previous_level['isZetaTier']:
+                zetaFlag = True
+            if ability['isOmicronTier'] and not previous_level['isOmicronTier']:
+                omicronFlag = True
+        return zetaFlag, omicronFlag

@@ -7,11 +7,13 @@ from database import Database
 from swgoh_comlink import SwgohComlink
 from fleetpayout import FleetPayout
 from dataloader import DataLoader
+from roster import Roster
 
 db = Database()
 comlink = SwgohComlink()
 dataloader = DataLoader(db, comlink)
 fleetpayout = FleetPayout(db, comlink)
+roster = Roster(db, comlink)
 
 localization = dataloader.get_localization()
 

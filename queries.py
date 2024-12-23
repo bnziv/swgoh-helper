@@ -54,7 +54,10 @@ class Queries:
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (id) DO UPDATE SET
         level = EXCLUDED.level,
-        star_level = EXCLUDED.star_level
+        star_level = EXCLUDED.star_level,
+        gear_level = EXCLUDED.gear_level,
+        relic_level = EXCLUDED.relic_level,
+        ultimate_ability = EXCLUDED.ultimate_ability
         WHERE roster_units.level IS DISTINCT FROM EXCLUDED.level
         OR roster_units.star_level IS DISTINCT FROM EXCLUDED.star_level
         OR roster_units.gear_level IS DISTINCT FROM EXCLUDED.gear_level

@@ -23,7 +23,7 @@ class Roster:
             unit_data['baseId'] = unit['definitionId'].split(':')[0]
             unit_data['level'] = unit['currentLevel']
             unit_data['stars'] = unit['currentRarity']
-            unit_data['gearLevel'] = unit['currentTier']
+            unit_data['gearLevel'] = unit['currentTier'] if unit['relic'] else None
             unit_data['relicLevel'] = unit['relic']['currentTier'] - 2 if unit['currentTier'] == 13 else None
             unit_data['ultimate'] = True if unit['purchasedAbilityId'] else False
 
