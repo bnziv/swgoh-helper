@@ -6,6 +6,7 @@ from discord import app_commands
 from discord.ext import commands
 
 db = helpers.db
+roster = helpers.roster
 
 class AllycodeEmbed(discord.Embed):
     def __init__(self, title=None, description=None):
@@ -50,6 +51,7 @@ class Allycode(commands.Cog):
         INSERT INTO users (allycode, discord_id, name, time_offset) VALUES (%s, %s, %s, %s)
         '''
         db.cursor.execute(query, (allycode, discord_id, name, offset))
+        roster.insert_roster(allycode, update=False)
         db.connection.commit()
         embed.description = f"**{name}** ({allycode}) is now linked to your Discord account"
         await interaction.response.send_message(embed=embed)
