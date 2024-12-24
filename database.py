@@ -81,7 +81,8 @@ class Database:
             name VARCHAR,
             time_offset INT,
             notify_events BOOLEAN,
-            notify_energy BOOLEAN
+            notify_energy BOOLEAN,
+            notify_roster BOOLEAN
         );
         CREATE TABLE IF NOT EXISTS fleet_shard_players (
             allycode INT PRIMARY KEY,

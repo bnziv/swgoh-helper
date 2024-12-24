@@ -1,10 +1,10 @@
+import asyncio
 from datetime import datetime
 import sys
 sys.path.append('..')
 import helpers
 import discord
-from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 roster = helpers.roster
 dataloader = helpers.dataloader
@@ -17,17 +17,6 @@ class RosterEmbed(discord.Embed):
 class RosterCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-    
-    async def roster_listener(self, allycode):
-        updates = roster.insert_roster(allycode)
-        output = []
-        if not updates:
-            return
-        
-        for update in updates:
-            update_strings = self.parse_update(update)
-            if update_strings:
-                output += update_strings
       
     def parse_update(self, update, dictionary):
         db.cursor.execute(f"SELECT u.name FROM units u JOIN roster_units ru ON ru.unit_id = u.unit_id WHERE ru.id = '{update[0]}';")
@@ -62,30 +51,48 @@ class RosterCog(commands.Cog):
                 dictionary[unit_name].append(f"Applied Omicron on {ability_name} ({ability_type})")
         return dictionary
 
-    @app_commands.command(name="roster", description="Get a player's roster")
-    async def roster(self, interaction: discord.Interaction, allycode: int):
-        await interaction.response.defer()
+    async def roster_listener(self, allycode, discord_id, name, offset):
+        user = self.bot.get_user(int(discord_id))
+        reset_time = helpers.calculate_reset(offset)
+        current = int(datetime.now().timestamp())
+        if current > reset_time:
+            reset_time += 86400
+        delay = reset_time - current
+        await asyncio.sleep(delay)
+
         output = {}
         updates = roster.insert_roster(allycode)
         if updates:
             for update in updates:
                 output = self.parse_update(update, output)
+        else:
+            return
 
-        embed = RosterEmbed(title="Upgrades Today")
+        embed = RosterEmbed(title=f"{name}'s upgrades since last reset")
         description = ""
         field_count = 0
-        for name, upgrades in output.items():
+        for unit_name, upgrades in output.items():
             if field_count >= 25: #Max field count (could add followup for more than 25 upgrades but is unlikely to be needed)
                 break 
             if 'Unlocked' in upgrades:
-                description += f"Unlocked **{name}**\n"
+                description += f"Unlocked **{unit_name}**\n"
                 upgrades.remove('Unlocked')
-            embed.add_field(name=name, value='\n'.join(upgrades), inline=False)
+            embed.add_field(name=unit_name, value='\n'.join(upgrades), inline=False)
             field_count += 1
         
         embed.description = description
         embed.timestamp = datetime.now()
-        await interaction.followup.send(embed=embed)
+        await user.send(embed=embed)
+
+    @tasks.loop(hours=24)
+    async def start_listeners(self):
+        db.cursor.execute("SELECT allycode, discord_id, name, time_offset FROM users WHERE notify_roster IS TRUE")
+        for result in db.cursor.fetchall():
+            asyncio.create_task(self.roster_listener(*result))
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.start_listeners.start()
 
 async def setup(bot):
     await bot.add_cog(RosterCog(bot))
