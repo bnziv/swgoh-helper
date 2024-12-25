@@ -40,9 +40,7 @@ async def notify_payout(allycode, discord_id, name, offset):
     user = bot.get_user(int(discord_id))
     payout_time = helpers.calculate_payout(offset)
     notify_time = payout_time - 3600
-    if current >= payout_time:
-        delay = payout_time - current + 86400 - 3600
-    elif current >= notify_time:
+    if current >= notify_time:
         delay = 0
     else:
         delay = notify_time - current
@@ -54,11 +52,11 @@ async def notify_payout(allycode, discord_id, name, offset):
 async def rank_listener(allycode, discord_id, name, payout_time, start_message):
     next_battle_message = warning_message = None
     embed = discord.Embed(color=embedColor)
-    current_rank = comlink.get_player_arena(allycode=allycode, player_details_only=True)['pvpProfile'][1]['rank']
+    current_rank = helpers.get_player_rank(allycode=allycode)
     user = bot.get_user(int(discord_id))
     battles = 0
     while datetime.now().timestamp() < payout_time:
-        new_rank = comlink.get_player_arena(allycode=allycode, player_details_only=True)['pvpProfile'][1]['rank']
+        new_rank = helpers.get_player_rank(allycode=allycode)
         if new_rank < current_rank:
             battles += 1
             current_rank = new_rank

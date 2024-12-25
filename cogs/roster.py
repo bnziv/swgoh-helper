@@ -55,8 +55,6 @@ class RosterCog(commands.Cog):
         user = self.bot.get_user(int(discord_id))
         reset_time = helpers.calculate_reset(offset)
         current = int(datetime.now().timestamp())
-        if current > reset_time:
-            reset_time += 86400
         delay = reset_time - current
         await asyncio.sleep(delay)
 

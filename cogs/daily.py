@@ -22,10 +22,8 @@ class Dailies(commands.Cog):
         current = int(datetime.now().timestamp())
         user = self.bot.get_user(int(discord_id))
         energy_time = helpers.calculate_reset(offset) + energy_timing
-        if current > energy_time:
-            energy_time += 86400
         delay = energy_time - current
-        await asyncio.sleep(abs(delay))
+        await asyncio.sleep(delay)
         message = await user.send(embed=embed, delete_after=7200)
         await message.add_reaction("✅")
         reminder = None
@@ -49,10 +47,8 @@ class Dailies(commands.Cog):
         current = int(datetime.now().timestamp())
         user = self.bot.get_user(int(discord_id))
         reset_time = helpers.calculate_reset(offset)
-        if current > reset_time:
-            reset_time += 86400
         delay = reset_time - current
-        await asyncio.sleep(abs(delay))
+        await asyncio.sleep(delay)
         message = await user.send(embed=embed, delete_after=86400)
         await message.add_reaction("✅")
         reminder = None
