@@ -1,3 +1,4 @@
+from backend import comlink, db
 import backend.helpers as helpers
 import re
 from datetime import datetime
@@ -6,9 +7,6 @@ from discord import app_commands
 from discord.ext import commands, tasks
 from titlecase import titlecase
 import asyncio
-
-comlink = helpers.comlink
-db = helpers.db
 
 class EventsEmbed(discord.Embed):
     def __init__(self, title=None, description=None):

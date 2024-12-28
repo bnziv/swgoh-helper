@@ -1,10 +1,8 @@
+from backend import db, roster
 import backend.helpers as helpers
 import discord
 from discord import app_commands
 from discord.ext import commands
-
-db = helpers.db
-roster = helpers.roster
 
 class AllycodeEmbed(discord.Embed):
     def __init__(self, title=None, description=None):

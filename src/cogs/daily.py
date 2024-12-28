@@ -1,11 +1,10 @@
+from backend import db
 import backend.helpers as helpers
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 from datetime import datetime, timedelta, timezone
 import asyncio
-
-db = helpers.db
 
 class DailiesEmbed(discord.Embed):
     def __init__(self, title=None, description=None):

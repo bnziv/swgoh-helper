@@ -1,7 +1,6 @@
 from backend.database import Database
 from swgoh_comlink import SwgohComlink
-import backend.helpers as helpers
-queries = helpers.queries
+from backend import queries
 
 class Roster:
     def __init__(self, database: Database, comlink: SwgohComlink):

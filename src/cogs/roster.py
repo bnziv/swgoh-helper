@@ -1,12 +1,9 @@
+from backend import db, dataloader, roster
 import backend.helpers as helpers
 import asyncio
 from datetime import datetime
 import discord
 from discord.ext import commands, tasks
-
-roster = helpers.roster
-dataloader = helpers.dataloader
-db = helpers.db
 
 class RosterEmbed(discord.Embed):
     def __init__(self, title=None, description=None):

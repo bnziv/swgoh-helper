@@ -1,11 +1,10 @@
+from backend import db
 import backend.helpers as helpers
 from unidecode import unidecode
 import re
 import discord
 from discord import app_commands
 from discord.ext import commands
-
-db = helpers.db
 
 class UnitEmbed(discord.Embed):
     def __init__(self, title=None, description=None):

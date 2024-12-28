@@ -1,18 +1,16 @@
+from backend import db 
 import asyncio
 import datetime
 import os
 import discord
 from discord.ext import commands, tasks
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 import backend.helpers as helpers
 
 directory = os.path.dirname(os.path.abspath(__file__))
 cogs_directory = os.path.join(directory, 'cogs')
 cogs = [file[:-3] for file in os.listdir(cogs_directory) if file.endswith('.py')]
 
-comlink = helpers.comlink
-db = helpers.db
-fleetpayout = helpers.fleetpayout
 embedColor = discord.Color.dark_purple()
 bot = commands.Bot(command_prefix='?', intents=discord.Intents.all())
 
