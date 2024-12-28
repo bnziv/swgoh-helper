@@ -1,5 +1,5 @@
 from swgoh_comlink import SwgohComlink
-from database import Database
+from backend.database import Database
 
 class FleetPayout:
     def __init__(self, database: Database, comlink: SwgohComlink):

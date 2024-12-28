@@ -1,10 +1,9 @@
 import psycopg2
 import os
-from dotenv import load_dotenv
+import time
 
 class Database:
     def __init__(self):
-        load_dotenv()
         self.user = os.getenv('DB_USERNAME')
         self.password = os.getenv('DB_PASSWORD')
         self.connection = None
@@ -12,31 +11,38 @@ class Database:
         self.connect()
 
     def connect(self):
-        try:
-            self.connection = psycopg2.connect(
-                dbname='swgoh',
-                user=self.user,
-                password=self.password
-            )
-            print("Connected to database.")
-        except psycopg2.OperationalError as e:
-            print("App database doesn't exist. Attempting to create 'swgoh'")
-            try: self.connection = psycopg2.connect(
-                    dbname='postgres',
-                    user=self.user,
-                    password=self.password
-                )
-            except:
-                print("Failed to connect to database or 'postgres' doesn't exist")
-                exit(1)
-            self.connection.autocommit = True
-            self.cursor = self.connection.cursor()
-            self.cursor.execute("CREATE DATABASE swgoh")
-            self.connection.close()
-            self.connect()
+        for attempts in range(5):
+            try:
+                self.connection = psycopg2.connect(os.getenv('DB_URL'))
+                print("Connected to database.")
+                break
+            except psycopg2.OperationalError as e:
+                if attempts < 4:
+                    print("Database connection failed. Retrying...")
+                    time.sleep(3)
+                else:
+                    print("Could not connect to database.")
+                    exit(1)
 
-        self.cursor = self.connection.cursor()
-        self.create_tables()
+                    ### For manual db server setup ###
+                    # print("App database doesn't exist. Attempting to create 'swgoh'")
+                    # try: self.connection = psycopg2.connect(
+                    #         dbname='postgres',
+                    #         user=self.user,
+                    #         password=self.password
+                    #     )
+                    # except:
+                    #     print("Failed to connect to database or 'postgres' doesn't exist")
+                    #     exit(1)
+                    # self.connection.autocommit = True
+                    # self.cursor = self.connection.cursor()
+                    # self.cursor.execute("CREATE DATABASE swgoh")
+                    # self.connection.close()
+                    # self.connect()
+
+        if self.connection:
+            self.cursor = self.connection.cursor()
+            self.create_tables()
 
     def create_tables(self):
         query = '''
@@ -68,7 +74,8 @@ class Database:
             is_zeta BOOLEAN,
             is_omicron BOOLEAN,
             omicron_mode INT DEFAULT NULL,
-            image_url VARCHAR
+            image_url VARCHAR,
+            UNIQUE (skill_id)
         );
         CREATE TABLE IF NOT EXISTS unit_abilities (
             unit_id VARCHAR REFERENCES units(unit_id) ON UPDATE CASCADE ON DELETE CASCADE,

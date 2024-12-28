@@ -4,12 +4,11 @@ import os
 import discord
 from discord.ext import commands, tasks
 from datetime import datetime, timezone, timedelta
-import helpers
+import backend.helpers as helpers
 
-cogs = []
-for file in os.listdir('./cogs'):
-    if file.endswith('.py'):
-        cogs.append(file[:-3])
+directory = os.path.dirname(os.path.abspath(__file__))
+cogs_directory = os.path.join(directory, 'cogs')
+cogs = [file[:-3] for file in os.listdir(cogs_directory) if file.endswith('.py')]
 
 comlink = helpers.comlink
 db = helpers.db

@@ -1,6 +1,4 @@
-import sys
-sys.path.append('..')
-import helpers
+import backend.helpers as helpers
 import discord
 from discord import app_commands
 from discord.ext import commands

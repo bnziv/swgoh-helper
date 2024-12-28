@@ -1,6 +1,4 @@
-import sys
-sys.path.append("..")
-import helpers
+import backend.helpers as helpers
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -83,7 +81,7 @@ class Allycode(commands.Cog):
             allycode (int): The allycode of the SWGOH account
         """
         query = '''
-        DELETE FROM users WHERE discord_id = %s
+        DELETE FROM users WHERE allycode = %s AND discord_id = %s
         '''
         db.cursor.execute(query, (allycode, str(interaction.user.id),))
         db.connection.commit()

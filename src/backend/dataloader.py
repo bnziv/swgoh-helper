@@ -1,7 +1,7 @@
-from database import Database
+from backend.database import Database
 from swgoh_comlink import SwgohComlink
-from queries import Queries
-queries = Queries()
+import backend.helpers as helpers
+queries = helpers.queries
 
 class DataLoader:
     def __init__(self, database: Database, comlink: SwgohComlink):

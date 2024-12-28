@@ -1,8 +1,6 @@
+import backend.helpers as helpers
 import asyncio
 from datetime import datetime
-import sys
-sys.path.append('..')
-import helpers
 import discord
 from discord.ext import commands, tasks
 
@@ -43,7 +41,7 @@ class RosterCog(commands.Cog):
             ability_name = db.cursor.fetchone()[0]
             ability_type = update[1].capitalize().split('skill')[0]
             zeta, omicron = dataloader.get_upgrade_skill_data(update[1], update[2] if update[2] else 1, update[3])
-            if unit_name not in dictionary:
+            if (zeta or omicron) and unit_name not in dictionary:
                 dictionary[unit_name] = []
             if zeta:
                 dictionary[unit_name].append(f"Applied Zeta on {ability_name} ({ability_type})")

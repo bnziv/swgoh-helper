@@ -1,6 +1,4 @@
-import sys
-sys.path.append("..")
-import helpers
+import backend.helpers as helpers
 from unidecode import unidecode
 import re
 import discord

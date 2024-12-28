@@ -1,6 +1,4 @@
-import sys
-sys.path.append("..")
-import helpers
+import backend.helpers as helpers
 import re
 from datetime import datetime
 import discord
