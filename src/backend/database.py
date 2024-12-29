@@ -1,6 +1,7 @@
 import psycopg2
 import os
 import time
+from backend import log
 
 class Database:
     def __init__(self):
@@ -14,14 +15,14 @@ class Database:
         for attempts in range(5):
             try:
                 self.connection = psycopg2.connect(os.getenv('DB_URL'))
-                print("Connected to database.")
+                log("Connected to database.")
                 break
             except psycopg2.OperationalError as e:
                 if attempts < 4:
-                    print("Database connection failed. Retrying...")
+                    log("Database connection failed. Retrying...")
                     time.sleep(3)
                 else:
-                    print("Could not connect to database.")
+                    log("Could not connect to database.")
                     exit(1)
 
                     ### For manual db server setup ###
@@ -82,20 +83,24 @@ class Database:
             ability_id VARCHAR REFERENCES abilities(ability_id) ON UPDATE CASCADE ON DELETE CASCADE,
             PRIMARY KEY (unit_id, ability_id)
         );
-        CREATE TABLE IF NOT EXISTS users (
+        CREATE TABLE IF NOT EXISTS discord_users (
+            discord_id VARCHAR(20) PRIMARY KEY,
+            notify_events BOOLEAN DEFAULT TRUE
+        );
+        CREATE TABLE IF NOT EXISTS linked_accounts (
             allycode INT PRIMARY KEY,
-            discord_id VARCHAR(20),
             name VARCHAR,
             time_offset INT,
-            notify_events BOOLEAN,
-            notify_energy BOOLEAN,
-            notify_roster BOOLEAN
+            notify_payout BOOLEAN DEFAULT TRUE,
+            notify_energy BOOLEAN DEFAULT TRUE,
+            notify_roster BOOLEAN DEFAULT TRUE,
+            discord_id VARCHAR REFERENCES discord_users(discord_id) ON DELETE CASCADE
         );
         CREATE TABLE IF NOT EXISTS fleet_shard_players (
             allycode INT PRIMARY KEY,
             name VARCHAR,
             time_offset INT,
-            part_of INT REFERENCES users(allycode)
+            part_of INT REFERENCES linked_accounts(allycode)
         );
         CREATE TABLE IF NOT EXISTS roster_units (
             id VARCHAR PRIMARY KEY,
@@ -105,7 +110,7 @@ class Database:
             gear_level INT,
             relic_level INT DEFAULT NULL,
             ultimate_ability BOOLEAN DEFAULT FALSE,
-            owner INT REFERENCES users(allycode) ON DELETE CASCADE
+            owner INT REFERENCES linked_accounts(allycode) ON DELETE CASCADE
         );
         CREATE TABLE IF NOT EXISTS roster_unit_abilities (
             skill_id VARCHAR REFERENCES abilities(skill_id) ON DELETE CASCADE,

@@ -23,13 +23,17 @@ class Allycode(commands.Cog):
             allycode (int): The allycode of the SWGOH account
         """
         embed = AllycodeEmbed()
+        discord_id = interaction.user.id
         checkQuery = '''
-        SELECT * FROM users WHERE allycode = %s
+        SELECT * FROM linked_accounts WHERE allycode = %s
         '''
         db.cursor.execute(checkQuery, (allycode,))
         result = db.cursor.fetchall()
         if len(result) != 0:
-            embed.description = "This allycode is already linked to a Discord account"
+            if result[0][1] == discord_id:
+                embed.description = "This allycode is already linked to your Discord account"
+            else:
+                embed.description = "This allycode is already linked to another Discord account"
             await interaction.response.send_message(embed=embed)
             return
         
@@ -42,11 +46,15 @@ class Allycode(commands.Cog):
         #TODO: Add confirmation
         name = result['name']
         offset = result['localTimeZoneOffsetMinutes']
-        discord_id = interaction.user.id
-        query = '''
-        INSERT INTO users (allycode, discord_id, name, time_offset) VALUES (%s, %s, %s, %s)
+        users_query = '''
+        INSERT INTO discord_users (discord_id) VALUES (%s) 
+        ON CONFLICT (discord_id) DO NOTHING
         '''
-        db.cursor.execute(query, (allycode, discord_id, name, offset))
+        db.cursor.execute(users_query, (discord_id,))
+        account_query = '''
+        INSERT INTO linked_accounts (allycode, discord_id, name, time_offset) VALUES (%s, %s, %s, %s)
+        '''
+        db.cursor.execute(account_query, (allycode, discord_id, name, offset))
         roster.insert_roster(allycode, update=False)
         db.connection.commit()
         embed.description = f"**{name}** ({allycode}) is now linked to your Discord account"
@@ -58,7 +66,7 @@ class Allycode(commands.Cog):
         Get all allycodes linked to your Discord account
         """
         query = '''
-        SELECT allycode, name FROM users WHERE discord_id = %s
+        SELECT allycode, name FROM linked_accounts WHERE discord_id = %s
         '''
         db.cursor.execute(query, (str(interaction.user.id),))
         result = db.cursor.fetchall()
@@ -79,7 +87,7 @@ class Allycode(commands.Cog):
             allycode (int): The allycode of the SWGOH account
         """
         query = '''
-        DELETE FROM users WHERE allycode = %s AND discord_id = %s
+        DELETE FROM linked_accounts WHERE allycode = %s AND discord_id = %s
         '''
         db.cursor.execute(query, (allycode, str(interaction.user.id),))
         db.connection.commit()

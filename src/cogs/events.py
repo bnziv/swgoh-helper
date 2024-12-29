@@ -141,7 +141,7 @@ class Events(commands.Cog):
                   if e['startTime'] in range(currentTime - 5, currentTime + 5)] #Time margin of error
         
         if events:
-            db.cursor.execute("SELECT DISTINCT discord_id FROM users WHERE notify_events IS TRUE")
+            db.cursor.execute("SELECT discord_id FROM discord_users WHERE notify_events IS TRUE")
             users = [self.bot.get_user(int(id[0])) for id in db.cursor.fetchall()]
 
             embed = self.events_to_embed(events=events, type="started")

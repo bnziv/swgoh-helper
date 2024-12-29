@@ -79,7 +79,7 @@ class RosterCog(commands.Cog):
 
     @tasks.loop(hours=24)
     async def start_listeners(self):
-        db.cursor.execute("SELECT allycode, discord_id, name, time_offset FROM users WHERE notify_roster IS TRUE")
+        db.cursor.execute("SELECT allycode, discord_id, name, time_offset FROM linked_accounts WHERE notify_roster IS TRUE")
         for result in db.cursor.fetchall():
             asyncio.create_task(self.roster_listener(*result))
 

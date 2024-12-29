@@ -1,9 +1,13 @@
 import os
+from datetime import datetime
 import requests
 import time
 from swgoh_comlink import SwgohComlink
 from backend.queries import Queries
 queries = Queries()
+
+def log(message):
+    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {message}")
 
 from backend.database import Database
 from backend.fleetpayout import FleetPayout

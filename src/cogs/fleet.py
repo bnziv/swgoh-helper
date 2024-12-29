@@ -95,7 +95,7 @@ class Fleet(commands.Cog):
             return
         name = result['name']
         offset = result['localTimeZoneOffsetMinutes']
-        db.cursor.execute('''SELECT allycode from users WHERE discord_id = %s''', (str(interaction.user.id),))
+        db.cursor.execute('''SELECT allycode from linked_accounts WHERE discord_id = %s''', (str(interaction.user.id),))
         result = db.cursor.fetchall()
         if len(result) == 0:
             embed.description = "Your Discord account is not linked to an allycode"

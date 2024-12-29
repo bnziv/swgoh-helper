@@ -15,9 +15,6 @@ async def tag_autocomplete(interaction: discord.Interaction, current: str) -> li
     tags = [app_commands.Choice(name=tag[0], value=tag[0]) for tag in db.cursor.fetchall()]
     return [tag for tag in tags if current.lower() in tag.name.lower()][:25]
 
-def log(message):
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {message}")
-
 def allycode_check(allycode):
     """
     Validates input for a valid allycode

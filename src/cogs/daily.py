@@ -66,7 +66,7 @@ class Dailies(commands.Cog):
         
     @tasks.loop(hours=24)
     async def start_listeners(self):
-        db.cursor.execute("SELECT discord_id, name, time_offset FROM users WHERE notify_energy IS TRUE")
+        db.cursor.execute("SELECT discord_id, name, time_offset FROM linked_accounts WHERE notify_energy IS TRUE")
         for user in db.cursor.fetchall():
             asyncio.create_task(self.dailies_listener(*user))
             asyncio.create_task(self.energy_listener(*user, timedelta(hours=12).total_seconds()))
