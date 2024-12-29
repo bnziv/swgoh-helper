@@ -1,13 +1,10 @@
-import sys
-sys.path.append("..")
-import helpers
+from backend import db
+import backend.helpers as helpers
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 from datetime import datetime, timedelta, timezone
 import asyncio
-
-db = helpers.db
 
 class DailiesEmbed(discord.Embed):
     def __init__(self, title=None, description=None):
@@ -22,10 +19,8 @@ class Dailies(commands.Cog):
         current = int(datetime.now().timestamp())
         user = self.bot.get_user(int(discord_id))
         energy_time = helpers.calculate_reset(offset) + energy_timing
-        if current > energy_time:
-            energy_time += 86400
         delay = energy_time - current
-        await asyncio.sleep(abs(delay))
+        await asyncio.sleep(delay)
         message = await user.send(embed=embed, delete_after=7200)
         await message.add_reaction("✅")
         reminder = None
@@ -49,10 +44,8 @@ class Dailies(commands.Cog):
         current = int(datetime.now().timestamp())
         user = self.bot.get_user(int(discord_id))
         reset_time = helpers.calculate_reset(offset)
-        if current > reset_time:
-            reset_time += 86400
         delay = reset_time - current
-        await asyncio.sleep(abs(delay))
+        await asyncio.sleep(delay)
         message = await user.send(embed=embed, delete_after=86400)
         await message.add_reaction("✅")
         reminder = None

@@ -1,8 +1,6 @@
-import json
-from database import Database
+from backend.database import Database
 from swgoh_comlink import SwgohComlink
-from queries import Queries
-queries = Queries()
+from backend import queries
 
 class Roster:
     def __init__(self, database: Database, comlink: SwgohComlink):

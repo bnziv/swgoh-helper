@@ -1,14 +1,9 @@
+from backend import db, dataloader, roster
+import backend.helpers as helpers
 import asyncio
 from datetime import datetime
-import sys
-sys.path.append('..')
-import helpers
 import discord
 from discord.ext import commands, tasks
-
-roster = helpers.roster
-dataloader = helpers.dataloader
-db = helpers.db
 
 class RosterEmbed(discord.Embed):
     def __init__(self, title=None, description=None):
@@ -43,7 +38,7 @@ class RosterCog(commands.Cog):
             ability_name = db.cursor.fetchone()[0]
             ability_type = update[1].capitalize().split('skill')[0]
             zeta, omicron = dataloader.get_upgrade_skill_data(update[1], update[2] if update[2] else 1, update[3])
-            if unit_name not in dictionary:
+            if (zeta or omicron) and unit_name not in dictionary:
                 dictionary[unit_name] = []
             if zeta:
                 dictionary[unit_name].append(f"Applied Zeta on {ability_name} ({ability_type})")
@@ -55,8 +50,6 @@ class RosterCog(commands.Cog):
         user = self.bot.get_user(int(discord_id))
         reset_time = helpers.calculate_reset(offset)
         current = int(datetime.now().timestamp())
-        if current > reset_time:
-            reset_time += 86400
         delay = reset_time - current
         await asyncio.sleep(delay)
 

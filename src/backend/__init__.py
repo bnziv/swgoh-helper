@@ -1,0 +1,30 @@
+import os
+import requests
+import time
+from swgoh_comlink import SwgohComlink
+from backend.queries import Queries
+queries = Queries()
+
+from backend.database import Database
+from backend.fleetpayout import FleetPayout
+from backend.dataloader import DataLoader
+from backend.roster import Roster
+
+COMLINK_URL = os.getenv('COMLINK_URL')
+
+def comlink_ready():
+    try:
+        requests.get(COMLINK_URL)
+        return True
+    except:
+        print("Error connecting to Comlink")
+        return False
+
+db = Database()
+while not comlink_ready():
+    time.sleep(2)
+comlink = SwgohComlink(COMLINK_URL)
+dataloader = DataLoader(db, comlink)
+fleetpayout = FleetPayout(db, comlink)
+roster = Roster(db, comlink)
+localization = dataloader.localization

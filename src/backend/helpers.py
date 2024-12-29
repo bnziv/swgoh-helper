@@ -1,33 +1,27 @@
+import asyncio
 import datetime
 from datetime import datetime, timedelta, timezone
 import discord
 from discord import app_commands
-import pytz
-from database import Database
-from swgoh_comlink import SwgohComlink
-from fleetpayout import FleetPayout
-from dataloader import DataLoader
-from roster import Roster
+from backend import db, comlink, localization
 
-db = Database()
-comlink = SwgohComlink()
-dataloader = DataLoader(db, comlink)
-fleetpayout = FleetPayout(db, comlink)
-roster = Roster(db, comlink)
-
-localization = dataloader.localization
-
-db.cursor.execute("SELECT name FROM units ORDER BY name;")
-units = [app_commands.Choice(name=unit[0], value=unit[0]) for unit in db.cursor.fetchall()]
 async def unit_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    db.cursor.execute("SELECT name FROM units ORDER BY name;")
+    units = [app_commands.Choice(name=unit[0], value=unit[0]) for unit in db.cursor.fetchall()]
     return [unit for unit in units if current.lower() in unit.name.lower()][:25]
 
-db.cursor.execute("SELECT name FROM tags ORDER by name;")
-tags = [app_commands.Choice(name=tag[0], value=tag[0]) for tag in db.cursor.fetchall()]
 async def tag_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    db.cursor.execute("SELECT name FROM tags ORDER by name;")
+    tags = [app_commands.Choice(name=tag[0], value=tag[0]) for tag in db.cursor.fetchall()]
     return [tag for tag in tags if current.lower() in tag.name.lower()][:25]
 
+def log(message):
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {message}")
+
 def allycode_check(allycode):
+    """
+    Validates input for a valid allycode
+    """
     if len(str(allycode)) != 9:
         return "Allycode must be 9 digits long"
     
@@ -38,18 +32,33 @@ def allycode_check(allycode):
     return result
 
 def calculate_payout(offset):
+    """
+    Calculates the next payout time given an offset
+    """
+    now = datetime.now(timezone.utc)
     payout = datetime.now(timezone.utc).replace(hour=19, minute=0, second=0, microsecond=0) - timedelta(minutes=offset)
+    while now > payout:
+        payout += timedelta(days=1)
     return int(payout.timestamp())
 
 def calculate_reset(offset):
+    """
+    Calculates the next reset time given an offset
+    """
+    now = datetime.now(timezone.utc)
     reset = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(minutes=offset)
+    while now > reset:
+        reset += timedelta(days=1)
     return int(reset.timestamp())
 
 def get_events():
     """
     Returns a list of all scheduled events
     """
-    result = comlink.get_events(enums=True)['gameEvent']
+    result = comlink.get_events(enums=True).get('gameEvent')
+    while result is None:
+        result = comlink.get_events(enums=True).get('gameEvent')
+        asyncio.sleep(1)
     result = [r for r in result if 'challenge' not in r['id'] and 'shipevent_SC' not in r['id'] and 'GA2' not in r['id'] and r['type'] == "SCHEDULED"]
     events = []
     for e in result:
@@ -62,6 +71,13 @@ def get_events():
         }
         events.append(event)
     return events
+
+def get_player_rank(allycode):
+    player = comlink.get_player_arena(allycode=allycode, player_details_only=True).get('pvpProfile')
+    while player is None:
+        player = comlink.get_player_arena(allycode=allycode, player_details_only=True).get('pvpProfile')
+        asyncio.sleep(1)
+    return player[1]['rank']
 
 class EmbedPages(discord.ui.View):
     def __init__(self, embeds, interaction):

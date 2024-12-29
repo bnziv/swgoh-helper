@@ -1,19 +1,17 @@
+from backend import db, dataloader, localization
+from backend.helpers import log
 import asyncio
 import datetime
 import os
 import discord
 from discord.ext import commands, tasks
-from datetime import datetime, timezone, timedelta
-import helpers
+from datetime import datetime, timedelta, timezone
+import backend.helpers as helpers
 
-cogs = []
-for file in os.listdir('./cogs'):
-    if file.endswith('.py'):
-        cogs.append(file[:-3])
+directory = os.path.dirname(os.path.abspath(__file__))
+cogs_directory = os.path.join(directory, 'cogs')
+cogs = [file[:-3] for file in os.listdir(cogs_directory) if file.endswith('.py')]
 
-comlink = helpers.comlink
-db = helpers.db
-fleetpayout = helpers.fleetpayout
 embedColor = discord.Color.dark_purple()
 bot = commands.Bot(command_prefix='?', intents=discord.Intents.all())
 
@@ -40,9 +38,7 @@ async def notify_payout(allycode, discord_id, name, offset):
     user = bot.get_user(int(discord_id))
     payout_time = helpers.calculate_payout(offset)
     notify_time = payout_time - 3600
-    if current >= payout_time:
-        delay = payout_time - current + 86400 - 3600
-    elif current >= notify_time:
+    if current >= notify_time:
         delay = 0
     else:
         delay = notify_time - current
@@ -54,11 +50,11 @@ async def notify_payout(allycode, discord_id, name, offset):
 async def rank_listener(allycode, discord_id, name, payout_time, start_message):
     next_battle_message = warning_message = None
     embed = discord.Embed(color=embedColor)
-    current_rank = comlink.get_player_arena(allycode=allycode, player_details_only=True)['pvpProfile'][1]['rank']
+    current_rank = helpers.get_player_rank(allycode=allycode)
     user = bot.get_user(int(discord_id))
     battles = 0
     while datetime.now().timestamp() < payout_time:
-        new_rank = comlink.get_player_arena(allycode=allycode, player_details_only=True)['pvpProfile'][1]['rank']
+        new_rank = helpers.get_player_rank(allycode=allycode)
         if new_rank < current_rank:
             battles += 1
             current_rank = new_rank
@@ -92,8 +88,9 @@ async def setup_hook():
 
 @bot.event
 async def on_ready():
-    print('Bot started')
+    log("Bot started")
     start_notify_payouts.start()
+    update_loop.start()
 
 @bot.tree.command(name="update", description="(Admin) Update commands")
 @commands.is_owner()
@@ -114,5 +111,17 @@ async def clear(interaction: discord.Interaction, amount: int):
         await asyncio.sleep(1)
 
     await interaction.edit_original_response(content=f"Done")
+
+@tasks.loop(hours=12)
+async def update_loop():
+    dataloader.check_version()
+
+# @update_loop.before_loop
+# async def before_update_loop():
+#     now = datetime.now(tz=timezone.utc)
+#     start_time = now.replace(hour=0, minute=0, second=0, microsecond=0)
+#     if now > start_time:
+#         start_time += timedelta(days=1)
+#     await asyncio.sleep((start_time - now).total_seconds())
 
 bot.run(os.getenv('BOT_TOKEN'))
