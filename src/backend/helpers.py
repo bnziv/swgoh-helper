@@ -1,20 +1,22 @@
 import asyncio
 import datetime
 from datetime import datetime, timedelta, timezone
-import os
 import discord
 from discord import app_commands
 from backend import db, comlink, localization
 
-db.cursor.execute("SELECT name FROM units ORDER BY name;")
-units = [app_commands.Choice(name=unit[0], value=unit[0]) for unit in db.cursor.fetchall()]
 async def unit_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    db.cursor.execute("SELECT name FROM units ORDER BY name;")
+    units = [app_commands.Choice(name=unit[0], value=unit[0]) for unit in db.cursor.fetchall()]
     return [unit for unit in units if current.lower() in unit.name.lower()][:25]
 
-db.cursor.execute("SELECT name FROM tags ORDER by name;")
-tags = [app_commands.Choice(name=tag[0], value=tag[0]) for tag in db.cursor.fetchall()]
 async def tag_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    db.cursor.execute("SELECT name FROM tags ORDER by name;")
+    tags = [app_commands.Choice(name=tag[0], value=tag[0]) for tag in db.cursor.fetchall()]
     return [tag for tag in tags if current.lower() in tag.name.lower()][:25]
+
+def log(message):
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {message}")
 
 def allycode_check(allycode):
     """

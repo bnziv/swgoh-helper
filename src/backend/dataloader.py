@@ -1,6 +1,7 @@
 from backend.database import Database
 from swgoh_comlink import SwgohComlink
 from backend import queries
+from backend.helpers import log
 
 class DataLoader:
     def __init__(self, database: Database, comlink: SwgohComlink):
@@ -20,13 +21,18 @@ class DataLoader:
         self.cursor.execute(query)
         result = self.db.cursor.fetchone()
         if not result or result[0] != version:
-            print("New version detected, updating database")
+            log("New version detected, updating database")
             self.cursor.execute(queries.insert_game_version, (version,))
             self.connection.commit()
-            self.load_data()
+            self.update()
         else:
-            print("Game data is up to date")
+            log("Database is up to date")
         
+    def update(self):
+        self.localization = self.get_localization()
+        self.skills_dict = {s['id']: s for s in self.gameData['skill']}
+        self.load_data()
+
     def get_localization(self):
         data = self.comlink.get_localization(locale="ENG_US", unzip=True, enums=True)['Loc_ENG_US.txt']
         lines = data.strip().split('\n')

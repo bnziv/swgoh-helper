@@ -1,10 +1,11 @@
-from backend import db 
+from backend import db, dataloader, localization
+from backend.helpers import log
 import asyncio
 import datetime
 import os
 import discord
 from discord.ext import commands, tasks
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import backend.helpers as helpers
 
 directory = os.path.dirname(os.path.abspath(__file__))
@@ -87,8 +88,9 @@ async def setup_hook():
 
 @bot.event
 async def on_ready():
-    print('Bot started')
+    log("Bot started")
     start_notify_payouts.start()
+    update_loop.start()
 
 @bot.tree.command(name="update", description="(Admin) Update commands")
 @commands.is_owner()
@@ -109,5 +111,17 @@ async def clear(interaction: discord.Interaction, amount: int):
         await asyncio.sleep(1)
 
     await interaction.edit_original_response(content=f"Done")
+
+@tasks.loop(hours=12)
+async def update_loop():
+    dataloader.check_version()
+
+# @update_loop.before_loop
+# async def before_update_loop():
+#     now = datetime.now(tz=timezone.utc)
+#     start_time = now.replace(hour=0, minute=0, second=0, microsecond=0)
+#     if now > start_time:
+#         start_time += timedelta(days=1)
+#     await asyncio.sleep((start_time - now).total_seconds())
 
 bot.run(os.getenv('BOT_TOKEN'))
