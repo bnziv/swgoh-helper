@@ -118,6 +118,11 @@ class Database:
             level INT,
             PRIMARY KEY (skill_id, unit_id)
         );
+        CREATE TABLE IF NOT EXISTS portraits (
+            id VARCHAR PRIMARY KEY,
+            name VARCHAR,
+            icon VARCHAR
+        );
         '''
         self.cursor.execute(query)
         self.connection.commit()

@@ -22,7 +22,7 @@ def allycode_check(allycode):
     if len(str(allycode)) != 9:
         return "Allycode must be 9 digits long"
     
-    result = comlink.get_player_arena(allycode=allycode, player_details_only=True)
+    result = comlink.get_player(allycode=allycode)
     if "message" in result.keys():
         return f"An account with allycode {allycode} could not be found"
     

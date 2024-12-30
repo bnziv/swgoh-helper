@@ -25,6 +25,15 @@ class Queries:
     ON CONFLICT (unit_id, tag_id) DO NOTHING
     '''
 
+    insert_discord_user = '''
+    INSERT INTO discord_users (discord_id) VALUES (%s) 
+    ON CONFLICT (discord_id) DO NOTHING
+    '''
+    
+    insert_linked_account = '''
+    INSERT INTO linked_accounts (allycode, discord_id, name, time_offset) VALUES (%s, %s, %s, %s)
+    '''
+
     insert_ability = '''
     INSERT INTO abilities (ability_id, skill_id, name, description, max_level, is_zeta, is_omicron, omicron_mode, image_url) 
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -42,6 +51,11 @@ class Queries:
     insert_unit_ability = '''
     INSERT INTO unit_abilities (unit_id, ability_id) VALUES (%s, %s)
     ON CONFLICT (unit_id, ability_id) DO NOTHING
+    '''
+
+    insert_portrait = '''
+    INSERT INTO portraits (id, name, icon) VALUES (%s, %s, %s)
+    ON CONFLICT (id) DO UPDATE SET name = excluded.name, icon = excluded.icon
     '''
 
     class roster:

@@ -48,6 +48,7 @@ class DataLoader:
         self.load_tags()
         self.load_unit_tags()
         self.load_abilities()
+        self.load_portraits()
     
     def load_units(self):
         processedUnits = set()
@@ -165,3 +166,8 @@ class DataLoader:
             if ability['isOmicronTier'] and not previous_level['isOmicronTier']:
                 omicronFlag = True
         return zetaFlag, omicronFlag
+    
+    def load_portraits(self):
+        for portrait in self.gameData['playerPortrait']:
+            self.cursor.execute(queries.insert_portrait, (portrait['id'], self.localization[portrait['nameKey']], portrait['icon']))
+        self.connection.commit()
