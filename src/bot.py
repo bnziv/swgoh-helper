@@ -1,84 +1,14 @@
-from backend import db, dataloader, localization, log
+from backend import dataloader, log
 import asyncio
-import datetime
 import os
 import discord
 from discord.ext import commands, tasks
-from datetime import datetime, timedelta, timezone
-import backend.helpers as helpers
 
 directory = os.path.dirname(os.path.abspath(__file__))
 cogs_directory = os.path.join(directory, 'cogs')
 cogs = [file[:-3] for file in os.listdir(cogs_directory) if file.endswith('.py')]
 
-embedColor = discord.Color.dark_purple()
 bot = commands.Bot(command_prefix='?', intents=discord.Intents.all())
-
-@tasks.loop(hours=24)
-async def start_notify_payouts():
-    #TODO: When bot is deployed, sleep until 12AM UTC and pass the start time to the inner functions
-    query = '''SELECT allycode, discord_id, name, time_offset FROM linked_accounts WHERE notify_payout IS TRUE'''
-    db.cursor.execute(query)
-    result = db.cursor.fetchall()
-    for user in result:
-        asyncio.create_task(notify_payout(*user))
-
-# @start_notify_payouts.before_loop
-# async def before_start_notify_payouts():
-#     now = datetime.now(tz=timezone.utc)
-#     start_time = now.replace(hour=0, minute=0, second=0, microsecond=0)
-#     if now > start_time:
-#         start_time += timedelta(days=1)
-#     await asyncio.sleep((start_time - now).total_seconds())
-
-async def notify_payout(allycode, discord_id, name, offset):
-    embed = discord.Embed(color=embedColor)
-    current = int(datetime.now().timestamp())
-    payout_time = helpers.calculate_payout(offset)
-    notify_time = payout_time - 3600
-    if current >= notify_time:
-        delay = 0
-    else:
-        delay = notify_time - current
-    await asyncio.sleep(delay)
-    embed.description = f"Fleet payout for **{name}** ({allycode}) is <t:{payout_time}:R>\nSending alerts for next available battle until payout"
-    start_message = await helpers.send_dm(bot, discord_id, embed)
-    if not start_message:
-        return
-    asyncio.create_task(rank_listener(allycode, discord_id, name, payout_time, start_message))
-
-async def rank_listener(allycode, discord_id, name, payout_time, start_message):
-    next_battle_message = warning_message = None
-    embed = discord.Embed(color=embedColor)
-    current_rank = helpers.get_player_rank(allycode=allycode)
-    battles = 0
-    while datetime.now().timestamp() < payout_time:
-        new_rank = helpers.get_player_rank(allycode=allycode)
-        if new_rank < current_rank:
-            battles += 1
-            current_rank = new_rank
-            if datetime.now().timestamp() + 590 < payout_time and battles < 5: #Sufficient time for another battle
-                if next_battle_message:
-                    await next_battle_message.edit(embed=discord.Embed(description=f"{name}'s next battle is available in <t:{int(datetime.now().timestamp() + 590)}:R>", color=embedColor))
-                await asyncio.sleep(590)
-                embed.description = f"{name}'s next battle is available"
-
-                if next_battle_message:
-                    await next_battle_message.delete()
-                next_battle_message = await helpers.send_dm(bot, discord_id, embed)
-        
-        if not warning_message and datetime.now().timestamp() + 90 >= payout_time: #90 seconds before payout
-            warning_embed = discord.Embed(description=f"{name}'s payout is soon", color=embedColor)
-            warning_message = await helpers.send_dm(bot, discord_id, warning_embed)
-
-        await asyncio.sleep(3)
-    
-    if warning_message:
-        await warning_message.delete()
-    if next_battle_message:
-        await next_battle_message.delete()
-    embed = discord.Embed(title=f"**{name}** finished at rank {current_rank}", timestamp=datetime.now(), color=embedColor)
-    await start_message.edit(embed=embed)
 
 @bot.event
 async def setup_hook():
@@ -89,7 +19,6 @@ async def setup_hook():
 @bot.event
 async def on_ready():
     log("Bot started")
-    start_notify_payouts.start()
     update_loop.start()
 
 @bot.tree.command(name="update", description="(Admin) Update commands")
@@ -115,13 +44,5 @@ async def clear(interaction: discord.Interaction, amount: int):
 @tasks.loop(hours=12)
 async def update_loop():
     dataloader.check_version()
-
-# @update_loop.before_loop
-# async def before_update_loop():
-#     now = datetime.now(tz=timezone.utc)
-#     start_time = now.replace(hour=0, minute=0, second=0, microsecond=0)
-#     if now > start_time:
-#         start_time += timedelta(days=1)
-#     await asyncio.sleep((start_time - now).total_seconds())
 
 bot.run(os.getenv('BOT_TOKEN'))
