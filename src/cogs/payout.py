@@ -1,6 +1,6 @@
 from backend import db
 import backend.helpers as helpers
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 import discord
 from discord.ext import commands, tasks
 import asyncio
@@ -13,9 +13,8 @@ class Payouts(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    @tasks.loop(hours=24)
+    @tasks.loop(time=helpers.DAILY_LOOP)
     async def start_notify_payouts(self):
-        #TODO: When bot is deployed, sleep until 12AM UTC and pass the start time to the inner functions
         query = '''SELECT allycode, discord_id, name, time_offset FROM linked_accounts WHERE notify_payout IS TRUE'''
         db.cursor.execute(query)
         result = db.cursor.fetchall()

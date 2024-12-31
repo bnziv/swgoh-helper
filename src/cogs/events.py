@@ -134,7 +134,7 @@ class Events(commands.Cog):
             await interaction.edit_original_response(content="Something went wrong")
             print(error)
 
-    @tasks.loop(hours=1)
+    @tasks.loop(time=helpers.HOURLY_LOOP)
     async def started_events_listener(self):
         currentTime = int(datetime.now().timestamp())
         events = [e for e in helpers.get_events() 
@@ -146,13 +146,9 @@ class Events(commands.Cog):
             embed = self.events_to_embed(events=events, type="started")
             for user in users:
                 await helpers.send_dm(bot=self.bot, discord_id=user[0], embed=embed)
+
     @commands.Cog.listener()
     async def on_ready(self):
-        #Align events listener to the next hour
-        now = datetime.now()
-        if now.minute != 0 or now.second != 0:
-            delay = (3600 - (now.minute * 60 + now.second))
-            await asyncio.sleep(delay)
         self.started_events_listener.start()
 
 async def setup(bot):

@@ -76,7 +76,7 @@ class RosterCog(commands.Cog):
         embed.timestamp = datetime.now()
         await helpers.send_dm(bot=self.bot, discord_id=discord_id, embed=embed)
 
-    @tasks.loop(hours=24)
+    @tasks.loop(time=helpers.DAILY_LOOP)
     async def start_listeners(self):
         db.cursor.execute("SELECT allycode, discord_id, name, time_offset FROM linked_accounts WHERE notify_roster IS TRUE")
         for result in db.cursor.fetchall():

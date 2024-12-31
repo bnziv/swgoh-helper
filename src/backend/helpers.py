@@ -1,10 +1,13 @@
 import asyncio
 import datetime
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, time
 import random
 import discord
 from discord import app_commands
 from backend import db, comlink, localization, log
+
+DAILY_LOOP = time(23, 59, 30, tzinfo=timezone.utc) #Loop 30 seconds before midnight as a buffer
+HOURLY_LOOP = [time(h, 0, 0, tzinfo=timezone.utc) for h in range(24)]
 
 async def unit_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     db.cursor.execute("SELECT name FROM units ORDER BY name;")

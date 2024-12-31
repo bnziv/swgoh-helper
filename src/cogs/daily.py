@@ -1,9 +1,8 @@
 from backend import db
 import backend.helpers as helpers
 import discord
-from discord import app_commands
 from discord.ext import commands, tasks
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import asyncio
 
 class DailiesEmbed(discord.Embed):
@@ -72,7 +71,7 @@ class Dailies(commands.Cog):
             await message.delete()
             await reminder.delete()
         
-    @tasks.loop(hours=24)
+    @tasks.loop(time=helpers.DAILY_LOOP)
     async def start_listeners(self):
         db.cursor.execute("SELECT discord_id, name, time_offset FROM linked_accounts WHERE notify_energy IS TRUE")
         for user in db.cursor.fetchall():
@@ -80,13 +79,6 @@ class Dailies(commands.Cog):
             asyncio.create_task(self.energy_listener(*user, timedelta(hours=12).total_seconds()))
             asyncio.create_task(self.energy_listener(*user, timedelta(hours=18).total_seconds()))
             asyncio.create_task(self.energy_listener(*user, timedelta(hours=21).total_seconds()))
-
-    # @start_listeners.before_loop
-    # async def before_start_listeners(self):
-    #     now = datetime.now()
-    #     next_day = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-    #     delay = (next_day - now).total_seconds()
-    #     await asyncio.sleep(delay)
 
     @commands.Cog.listener()
     async def on_ready(self):
