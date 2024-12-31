@@ -48,6 +48,7 @@ class DataLoader:
         self.load_tags()
         self.load_unit_tags()
         self.load_abilities()
+        self.load_ability_upgrades()
         self.load_portraits()
     
     def load_units(self):
@@ -136,7 +137,21 @@ class DataLoader:
                     self.cursor.execute(queries.insert_unit_ability, (unitId, ability['id']))
 
         self.connection.commit()
-            
+    
+    def load_ability_upgrades(self):
+        self.db.cursor.execute("SELECT skill_id FROM abilities WHERE skill_id IS NOT NULL")
+        for skill_id in self.db.cursor.fetchall():
+            zeta_level = omicron_level = None
+            skill = self.skills_dict[skill_id[0]]
+            for i in range(len(skill['tier'])):
+                tier = skill['tier'][i]
+                if 'zeta' in tier['recipeId'].lower():
+                    zeta_level = i + 2
+                if 'omicron' in tier['recipeId'].lower():
+                    omicron_level = i + 2
+            if zeta_level or omicron_level:
+                self.cursor.execute(queries.insert_ability_upgrade, (zeta_level, omicron_level, skill_id))
+
     def __get_skill_data(self, id, skills, abilities):
         skill = skills[id]
         maxLevel = len(skill['tier']) + 1
@@ -153,18 +168,18 @@ class DataLoader:
     
     def get_upgrade_skill_data(self, id, old_level, new_level):
         zetaFlag = omicronFlag = False
-        skill = self.skills_dict[id]
-        purchased_levels = range(old_level+1, new_level+1)
+        self.cursor.execute('''SELECT zeta_level, omicron_level FROM ability_upgrades WHERE skill_id = %s''', (id,))
+        result = self.cursor.fetchone()
+        if not result:
+            return zetaFlag, omicronFlag
         
-        for i in purchased_levels:
-             #tier[0] is for leveling from 1 to 2, tier[1] is for leveling from 2 to 3, etc
-            previous_level = skill['tier'][i-3 if i > 2 else 0]
-            ability = skill['tier'][i-2]
-
-            if ability['isZetaTier'] and not previous_level['isZetaTier']:
-                zetaFlag = True
-            if ability['isOmicronTier'] and not previous_level['isOmicronTier']:
-                omicronFlag = True
+        zeta_level = result[0]
+        omicron_level = result[1]
+        purchased_levels = range(old_level+1, new_level+1)
+        if zeta_level in purchased_levels:
+            zetaFlag = True
+        if omicron_level in purchased_levels:
+            omicronFlag = True
         return zetaFlag, omicronFlag
     
     def load_portraits(self):

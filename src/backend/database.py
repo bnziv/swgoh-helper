@@ -68,14 +68,20 @@ class Database:
         );
         CREATE TABLE IF NOT EXISTS abilities (
             ability_id VARCHAR PRIMARY KEY,
-            skill_id VARCHAR,
+            skill_id VARCHAR UNIQUE,
             name VARCHAR,
             description VARCHAR,
             max_level INT,
             is_zeta BOOLEAN,
             is_omicron BOOLEAN,
             omicron_mode INT DEFAULT NULL,
-            image_url VARCHAR,
+            image_url VARCHAR
+        );
+        CREATE TABLE IF NOT EXISTS ability_upgrades (
+            id SERIAL PRIMARY KEY,
+            zeta_level INT DEFAULT NULL,
+            omicron_level INT DEFAULT NULL,
+            skill_id VARCHAR REFERENCES abilities(skill_id) ON UPDATE CASCADE ON DELETE CASCADE,
             UNIQUE (skill_id)
         );
         CREATE TABLE IF NOT EXISTS unit_abilities (

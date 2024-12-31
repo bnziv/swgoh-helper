@@ -48,6 +48,13 @@ class Queries:
     skill_id = excluded.skill_id;
     '''
 
+    insert_ability_upgrade = '''
+    INSERT INTO ability_upgrades (zeta_level, omicron_level, skill_id) VALUES (%s, %s, %s)
+    ON CONFLICT (skill_id) DO UPDATE SET
+    zeta_level = excluded.zeta_level,
+    omicron_level = excluded.omicron_level;
+    '''
+
     insert_unit_ability = '''
     INSERT INTO unit_abilities (unit_id, ability_id) VALUES (%s, %s)
     ON CONFLICT (unit_id, ability_id) DO NOTHING

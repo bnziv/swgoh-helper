@@ -19,9 +19,10 @@ COMLINK_URL = os.getenv('COMLINK_URL')
 def comlink_ready():
     try:
         requests.get(COMLINK_URL)
+        log("Connected to Comlink")
         return True
     except:
-        print("Error connecting to Comlink")
+        log("Error connecting to Comlink")
         return False
 
 db = Database()
