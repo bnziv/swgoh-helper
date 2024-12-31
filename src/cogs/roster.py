@@ -47,7 +47,6 @@ class RosterCog(commands.Cog):
         return dictionary
 
     async def roster_listener(self, allycode, discord_id, name, offset):
-        user = self.bot.get_user(int(discord_id))
         reset_time = helpers.calculate_reset(offset)
         current = int(datetime.now().timestamp())
         delay = reset_time - current
@@ -75,7 +74,7 @@ class RosterCog(commands.Cog):
         
         embed.description = description
         embed.timestamp = datetime.now()
-        await user.send(embed=embed)
+        await helpers.send_dm(bot=self.bot, discord_id=discord_id, embed=embed)
 
     @tasks.loop(hours=24)
     async def start_listeners(self):

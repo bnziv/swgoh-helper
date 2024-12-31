@@ -1,9 +1,10 @@
 import asyncio
 import datetime
 from datetime import datetime, timedelta, timezone
+import random
 import discord
 from discord import app_commands
-from backend import db, comlink, localization
+from backend import db, comlink, localization, log
 
 async def unit_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     db.cursor.execute("SELECT name FROM units ORDER BY name;")
@@ -75,6 +76,24 @@ def get_player_rank(allycode):
         player = comlink.get_player_arena(allycode=allycode, player_details_only=True).get('pvpProfile')
         asyncio.sleep(1)
     return player[1]['rank']
+
+async def send_dm(bot, discord_id, embed):
+    """
+    Helper function to send a DM to a user, retrying up to 5 times if it fails
+    Returns the message
+    """
+    user = bot.get_user(int(discord_id))
+    for _ in range(5):
+        try:
+            message = await user.send(embed=embed)
+            log(f"Sent DM to {discord_id}")
+            return message
+        except discord.errors.Forbidden: #Not allowed
+            log(f"Unable to send DM to {discord_id}")
+            return None
+        except discord.errors.HTTPException: #Opening DM too fast
+            log(f"Failed to send DM to {discord_id}, retrying...")
+            await asyncio.sleep(random.randint(1, 3))
 
 class EmbedPages(discord.ui.View):
     def __init__(self, embeds, interaction):

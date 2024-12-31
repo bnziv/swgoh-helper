@@ -142,13 +142,10 @@ class Events(commands.Cog):
         
         if events:
             db.cursor.execute("SELECT discord_id FROM discord_users WHERE notify_events IS TRUE")
-            users = [self.bot.get_user(int(id[0])) for id in db.cursor.fetchall()]
-
+            users = db.cursor.fetchall()
             embed = self.events_to_embed(events=events, type="started")
-            
-            tasks = [user.send(embed=embed) for user in users]
-            await asyncio.gather(*tasks)
-          
+            for user in users:
+                await helpers.send_dm(bot=self.bot, discord_id=user[0], embed=embed)
     @commands.Cog.listener()
     async def on_ready(self):
         #Align events listener to the next hour

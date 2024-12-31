@@ -34,7 +34,6 @@ async def start_notify_payouts():
 async def notify_payout(allycode, discord_id, name, offset):
     embed = discord.Embed(color=embedColor)
     current = int(datetime.now().timestamp())
-    user = bot.get_user(int(discord_id))
     payout_time = helpers.calculate_payout(offset)
     notify_time = payout_time - 3600
     if current >= notify_time:
@@ -43,14 +42,15 @@ async def notify_payout(allycode, discord_id, name, offset):
         delay = notify_time - current
     await asyncio.sleep(delay)
     embed.description = f"Fleet payout for **{name}** ({allycode}) is <t:{payout_time}:R>\nSending alerts for next available battle until payout"
-    start_message = await user.send(embed=embed)
+    start_message = await helpers.send_dm(bot, discord_id, embed)
+    if not start_message:
+        return
     asyncio.create_task(rank_listener(allycode, discord_id, name, payout_time, start_message))
 
 async def rank_listener(allycode, discord_id, name, payout_time, start_message):
     next_battle_message = warning_message = None
     embed = discord.Embed(color=embedColor)
     current_rank = helpers.get_player_rank(allycode=allycode)
-    user = bot.get_user(int(discord_id))
     battles = 0
     while datetime.now().timestamp() < payout_time:
         new_rank = helpers.get_player_rank(allycode=allycode)
@@ -65,10 +65,11 @@ async def rank_listener(allycode, discord_id, name, payout_time, start_message):
 
                 if next_battle_message:
                     await next_battle_message.delete()
-                next_battle_message = await user.send(embed=embed)
+                next_battle_message = await helpers.send_dm(bot, discord_id, embed)
         
         if not warning_message and datetime.now().timestamp() + 90 >= payout_time: #90 seconds before payout
-            warning_message = await user.send(embed=discord.Embed(description=f"{name}'s payout is soon", color=embedColor))
+            warning_embed = discord.Embed(description=f"{name}'s payout is soon", color=embedColor)
+            warning_message = await helpers.send_dm(bot, discord_id, warning_embed)
 
         await asyncio.sleep(3)
     

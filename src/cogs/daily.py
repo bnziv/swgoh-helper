@@ -21,7 +21,9 @@ class Dailies(commands.Cog):
         energy_time = helpers.calculate_reset(offset) + energy_timing
         delay = energy_time - current
         await asyncio.sleep(delay)
-        message = await user.send(embed=embed, delete_after=7200)
+        message = helpers.send_dm(self.bot, discord_id, embed)
+        if not message:
+            return
         await message.add_reaction("✅")
         reminder = None
         try:
@@ -31,13 +33,15 @@ class Dailies(commands.Cog):
             await message.delete()
         except asyncio.TimeoutError:
             reminder_embed = DailiesEmbed(description=f"30 minutes left to claim free energy")
-            reminder = await user.send(embed=reminder_embed, delete_after=1800)
+            reminder = await helpers.send_dm(self.bot, discord_id, embed=reminder_embed)
+            if not reminder:
+                return
             try:
                 await self.bot.wait_for("reaction_add", timeout=1800, check=check)
-                await message.delete()
-                await reminder.delete()
             except:
                 pass
+            await message.delete()
+            await reminder.delete()
 
     async def dailies_listener(self, discord_id, name, offset):
         embed = DailiesEmbed(title="Daily Reset", description=f"React to the message if **{name}** has completed dailies")
@@ -46,7 +50,9 @@ class Dailies(commands.Cog):
         reset_time = helpers.calculate_reset(offset)
         delay = reset_time - current
         await asyncio.sleep(delay)
-        message = await user.send(embed=embed, delete_after=86400)
+        message = helpers.send_dm(bot=self.bot, discord=discord_id, embed=embed)
+        if not message:
+            return
         await message.add_reaction("✅")
         reminder = None
         try:
@@ -56,13 +62,15 @@ class Dailies(commands.Cog):
             await message.delete()
         except asyncio.TimeoutError:
             reminder_embed = DailiesEmbed(description=f"1 hour left until reset\nReminder for {name} to do dailies")
-            reminder = await user.send(embed=reminder_embed, delete_after=3600)
+            reminder = await helpers.send_dm(bot=self.bot, discord=discord_id, embed=reminder_embed)
+            if not reminder:
+                return
             try:
                 await self.bot.wait_for("reaction_add", timeout=3600, check=check)
-                await message.delete()
-                await reminder.delete()
             except:
                 pass
+            await message.delete()
+            await reminder.delete()
         
     @tasks.loop(hours=24)
     async def start_listeners(self):
