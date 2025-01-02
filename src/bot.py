@@ -44,6 +44,6 @@ async def clear(interaction: discord.Interaction, amount: int):
 
 @tasks.loop(time=HOURLY_LOOP)
 async def update_loop():
-    dataloader.check_version()
+    await dataloader.check_version()
 
 bot.run(os.getenv('BOT_TOKEN'))

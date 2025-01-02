@@ -57,3 +57,22 @@ class Roster:
         
         self.connection.commit()
         return updates
+    
+    def get_upgrade_skill_data(self, id, old_level, new_level):
+        """
+        Returns whether an ability upgrade is a zeta and/or omicron upgrade
+        """
+        zetaFlag = omicronFlag = False
+        self.cursor.execute('''SELECT zeta_level, omicron_level FROM ability_upgrades WHERE skill_id = %s''', (id,))
+        result = self.cursor.fetchone()
+        if not result:
+            return zetaFlag, omicronFlag
+        
+        zeta_level = result[0]
+        omicron_level = result[1]
+        purchased_levels = range(old_level+1, new_level+1)
+        if zeta_level in purchased_levels:
+            zetaFlag = True
+        if omicron_level in purchased_levels:
+            omicronFlag = True
+        return zetaFlag, omicronFlag

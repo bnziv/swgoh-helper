@@ -37,7 +37,7 @@ class RosterCog(commands.Cog):
             db.cursor.execute(f'''SELECT a.name FROM abilities a WHERE a.skill_id = '{update[1]}';''')
             ability_name = db.cursor.fetchone()[0]
             ability_type = update[1].capitalize().split('skill')[0]
-            zeta, omicron = dataloader.get_upgrade_skill_data(update[1], update[2] if update[2] else 1, update[3])
+            zeta, omicron = roster.get_upgrade_skill_data(update[1], update[2] if update[2] else 1, update[3])
             if (zeta or omicron) and unit_name not in dictionary:
                 dictionary[unit_name] = []
             if zeta:

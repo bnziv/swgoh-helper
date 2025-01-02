@@ -1,3 +1,5 @@
+import asyncio
+import time
 from backend.database import Database
 from swgoh_comlink import SwgohComlink
 from backend import queries, log
@@ -8,10 +10,11 @@ class DataLoader:
         self.connection = self.db.connection
         self.cursor = self.db.cursor
         self.comlink = comlink
-        self.gameData = self.comlink.get_game_data(include_pve_units=False)
-        self.skills_dict = {s['id']: s for s in self.gameData['skill']}
     
-    def check_version(self):
+    async def check_version(self):
+        """
+        Check comlink data version with database and update if necessary
+        """
         version = self.comlink.get_latest_game_data_version()['game']
         query = '''
         SELECT version FROM game_version ORDER BY timestamp DESC LIMIT 1
@@ -22,17 +25,14 @@ class DataLoader:
             log("New version detected, updating database")
             self.cursor.execute(queries.insert_game_version, (version,))
             self.connection.commit()
-            self.update()
+            await self.load_data()
+            log("Update complete")
         else:
             log("Database is up to date")
         
-    def update(self):
-        self.skills_dict = {s['id']: s for s in self.gameData['skill']}
-        self.load_data()
-
     def convert_localization(self):
         """
-        Converts the Comlink localization response into a dictionary.
+        Convert the Comlink localization response into a dictionary
         """
         data = self.comlink.get_localization(locale="ENG_US", unzip=True, enums=True)['Loc_ENG_US.txt']
         lines = data.strip().split('\n')
@@ -51,27 +51,36 @@ class DataLoader:
         self.cursor.execute(queries.get_localization, (key,))
         return self.cursor.fetchone()[0]
 
-    def load_data(self):
+    async def load_data(self):
         self.load_localization()
-        self.load_units()
         self.load_tags()
-        self.load_unit_tags()
-        self.load_abilities()
-        self.load_ability_upgrades()
+        skills = self.comlink.get_game_data(items="SkillDefinitions")
+        skills = {s['id']: s for s in skills['skill']}
+        abilities = self.comlink.get_game_data(items="AbilityDefinitions")
+        abilities = {a['id']: a for a in abilities['ability']}
+        await asyncio.sleep(20) #Sleep for Comlink memory release
+        self.load_units(skills, abilities)
+        self.load_ability_upgrades(skills)
         self.load_portraits()
-
+    
     def load_localization(self):
         localization = self.convert_localization()
         for key, value in localization.items():
             self.cursor.execute(queries.insert_localization, (key, value))
         self.connection.commit()
-    
-    def load_units(self):
+
+    def load_units(self, skills, abilities):
+        """
+        Load units and their tags into the database
+        """
+        game_data = self.comlink.get_game_data(items="UnitDefinitions")
+        self.cursor.execute("SELECT tag_id from tags")
+        visibleTags = {row[0] for row in self.cursor.fetchall()}
         processedUnits = set()
 
-        for unit in self.gameData['units']:
+        for unit in game_data['units']:
             unitId = unit['baseId']
-            if unit['obtainableTime'] != '0' or unitId in processedUnits:
+            if unit['obtainableTime'] != '0' or not unit['obtainable'] or unitId in processedUnits:
                 continue
             
             name = self.get_localization(unit['nameKey'])
@@ -79,12 +88,22 @@ class DataLoader:
             imageUrl = unit['thumbnailName']
             
             self.cursor.execute(queries.insert_unit, (unitId, name, desc, imageUrl))
+
+            for tag in unit['categoryId']:
+                if tag in visibleTags:
+                    self.cursor.execute(queries.insert_unit_tag, (unitId, tag))
+
+            self.load_abilities(unit, skills, abilities)
             processedUnits.add(unitId)
 
         self.connection.commit()
 
     def load_tags(self):
-        for tag in self.gameData['category']:
+        """
+        Load all visible tags into the database
+        """
+        game_data = self.comlink.get_game_data(items="CategoryDefinitions")
+        for tag in game_data['category']:
             if not tag['visible'] or tag['id'] == 'eventonly':
                 continue
 
@@ -94,70 +113,37 @@ class DataLoader:
 
         self.connection.commit()
 
-    def load_unit_tags(self):
-        self.cursor.execute("SELECT tag_id from tags")
-        visibleTags = {row[0] for row in self.cursor.fetchall()}
-
-        self.cursor.execute("SELECT unit_id from units")
-        playableUnits = {row[0] for row in self.cursor.fetchall()}
-
-        processedUnits = set()
-
-        for unit in self.gameData['units']:
-            unitId = unit['baseId']
-            if unitId not in playableUnits or unitId in processedUnits:
-                continue
-
-            for tag in unit['categoryId']:
-                if tag in visibleTags:
-                    self.cursor.execute(queries.insert_unit_tag, (unitId, tag))
-
-            processedUnits.add(unitId)
-
-        self.connection.commit()
+    def load_abilities(self, unit, skills_dict, abilities_dict):
+        """
+        Load a unit's abilities into the database
+        """
+        unitId = unit['baseId']
+        skill_ids = [s['skillId'] for s in unit['skillReference']] + [s['skillReference'][0]['skillId'] for s in unit['crew']]
+        for id in skill_ids:
+            skillData = self.__get_skill_data(id, skills_dict, abilities_dict)
+            self.cursor.execute(queries.insert_ability, skillData)
+            self.cursor.execute(queries.insert_unit_ability, (unitId, skillData[0]))
+        
+        #For galactic legend ultimate abilities
+        if "galactic_legend" not in unit['categoryId']:
+            return
+        for a in unit['limitBreakRef']:
+            if a['abilityId'].startswith('ultimate'):
+                ability = abilities_dict[a['abilityId']]
+                name = self.get_localization(ability['nameKey'])
+                desc = self.get_localization(ability['descKey'])
+                imageUrl = ability['icon']
+                self.cursor.execute(queries.insert_ability, (ability['id'], None, name, desc, 1, False, False, None, imageUrl))
+                self.cursor.execute(queries.insert_unit_ability, (unitId, ability['id']))
     
-    def load_abilities(self):
-        selectUnits = '''
-        SELECT unit_id FROM units
-        '''
-        self.cursor.execute(selectUnits)
-        playableUnits = {row[0] for row in self.cursor.fetchall()}
-        processedUnits = set()
-
-        #Lookup dictionaries for helper function
-        skills = self.skills_dict
-        abilities = {a['id']: a for a in self.gameData['ability']}
-
-        for unit in self.gameData['units']:
-            unitId = unit['baseId']
-            if unitId not in playableUnits or unitId in processedUnits:
-                continue
-            skillIds = [s['skillId'] for s in unit['skillReference']] + [s['skillReference'][0]['skillId'] for s in unit['crew']]
-            for id in skillIds:
-                skillData = self.__get_skill_data(id, skills, abilities)
-                self.cursor.execute(queries.insert_ability, skillData)
-                self.cursor.execute(queries.insert_unit_ability, (unitId, skillData[0]))
-            processedUnits.add(unitId)
-            
-            #For galactic legend ultimate abilities
-            if "galactic_legend" not in unit['categoryId']:
-                continue
-            for a in unit['limitBreakRef']:
-                if a['abilityId'].startswith('ultimate'):
-                    ability = abilities[a['abilityId']]
-                    name = self.get_localization(ability['nameKey'])
-                    desc = self.get_localization(ability['descKey'])
-                    imageUrl = ability['icon']
-                    self.cursor.execute(queries.insert_ability, (ability['id'], None, name, desc, 1, False, False, None, imageUrl))
-                    self.cursor.execute(queries.insert_unit_ability, (unitId, ability['id']))
-
-        self.connection.commit()
-    
-    def load_ability_upgrades(self):
+    def load_ability_upgrades(self, skills):
+        """
+        Load an ability's zeta and omicron levels into the database
+        """
         self.db.cursor.execute("SELECT skill_id FROM abilities WHERE skill_id IS NOT NULL")
         for skill_id in self.db.cursor.fetchall():
             zeta_level = omicron_level = None
-            skill = self.skills_dict[skill_id[0]]
+            skill = skills[skill_id[0]]
             for i in range(len(skill['tier'])):
                 tier = skill['tier'][i]
                 if 'zeta' in tier['recipeId'].lower():
@@ -168,6 +154,9 @@ class DataLoader:
                 self.cursor.execute(queries.insert_ability_upgrade, (zeta_level, omicron_level, skill_id))
 
     def __get_skill_data(self, id, skills, abilities):
+        """
+        Helper function to get relevant data for an ability
+        """
         skill = skills[id]
         maxLevel = len(skill['tier']) + 1
         isZeta = skill['isZeta']
@@ -181,23 +170,11 @@ class DataLoader:
         imageUrl = ability["icon"]
         return ability['id'], id, name, desc, maxLevel, isZeta, isOmicron, omiMode, imageUrl
     
-    def get_upgrade_skill_data(self, id, old_level, new_level):
-        zetaFlag = omicronFlag = False
-        self.cursor.execute('''SELECT zeta_level, omicron_level FROM ability_upgrades WHERE skill_id = %s''', (id,))
-        result = self.cursor.fetchone()
-        if not result:
-            return zetaFlag, omicronFlag
-        
-        zeta_level = result[0]
-        omicron_level = result[1]
-        purchased_levels = range(old_level+1, new_level+1)
-        if zeta_level in purchased_levels:
-            zetaFlag = True
-        if omicron_level in purchased_levels:
-            omicronFlag = True
-        return zetaFlag, omicronFlag
-    
     def load_portraits(self):
-        for portrait in self.gameData['playerPortrait']:
+        """
+        Load all player portraits into the database
+        """
+        game_data = self.comlink.get_game_data(items="PlayerPortaitDefinitions") #Typo intended due to wrapper
+        for portrait in game_data['playerPortrait']:
             self.cursor.execute(queries.insert_portrait, (portrait['id'], self.get_localization(portrait['nameKey']), portrait['icon']))
         self.connection.commit()
