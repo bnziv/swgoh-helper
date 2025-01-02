@@ -51,6 +51,10 @@ class Database:
             version VARCHAR PRIMARY KEY,
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS localization (
+            key VARCHAR PRIMARY KEY,
+            value VARCHAR
+        );
         CREATE TABLE IF NOT EXISTS units (
             unit_id VARCHAR PRIMARY KEY,
             name VARCHAR,

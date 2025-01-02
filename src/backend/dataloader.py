@@ -9,7 +9,6 @@ class DataLoader:
         self.cursor = self.db.cursor
         self.comlink = comlink
         self.gameData = self.comlink.get_game_data(include_pve_units=False)
-        self.localization = self.get_localization()
         self.skills_dict = {s['id']: s for s in self.gameData['skill']}
     
     def check_version(self):
@@ -28,11 +27,13 @@ class DataLoader:
             log("Database is up to date")
         
     def update(self):
-        self.localization = self.get_localization()
         self.skills_dict = {s['id']: s for s in self.gameData['skill']}
         self.load_data()
 
-    def get_localization(self):
+    def convert_localization(self):
+        """
+        Converts the Comlink localization response into a dictionary.
+        """
         data = self.comlink.get_localization(locale="ENG_US", unzip=True, enums=True)['Loc_ENG_US.txt']
         lines = data.strip().split('\n')
         localization = {}
@@ -42,14 +43,28 @@ class DataLoader:
             key, value = line.split('|', 1)
             localization[key.strip()] = value.strip()
         return localization
+    
+    def get_localization(self, key):
+        """
+        Get localization value from database
+        """
+        self.cursor.execute(queries.get_localization, (key,))
+        return self.cursor.fetchone()[0]
 
     def load_data(self):
+        self.load_localization()
         self.load_units()
         self.load_tags()
         self.load_unit_tags()
         self.load_abilities()
         self.load_ability_upgrades()
         self.load_portraits()
+
+    def load_localization(self):
+        localization = self.convert_localization()
+        for key, value in localization.items():
+            self.cursor.execute(queries.insert_localization, (key, value))
+        self.connection.commit()
     
     def load_units(self):
         processedUnits = set()
@@ -59,8 +74,8 @@ class DataLoader:
             if unit['obtainableTime'] != '0' or unitId in processedUnits:
                 continue
             
-            name = self.localization[unit['nameKey']]
-            desc = self.localization[unit['descKey']]
+            name = self.get_localization(unit['nameKey'])
+            desc = self.get_localization(unit['descKey'])
             imageUrl = unit['thumbnailName']
             
             self.cursor.execute(queries.insert_unit, (unitId, name, desc, imageUrl))
@@ -74,7 +89,7 @@ class DataLoader:
                 continue
 
             id = tag['id']
-            name = self.localization[tag['descKey']]
+            name = self.get_localization(tag['descKey'])
             self.cursor.execute(queries.insert_tag, (id, name))
 
         self.connection.commit()
@@ -130,8 +145,8 @@ class DataLoader:
             for a in unit['limitBreakRef']:
                 if a['abilityId'].startswith('ultimate'):
                     ability = abilities[a['abilityId']]
-                    name = self.localization[ability['nameKey']]
-                    desc = self.localization[ability['descKey']]
+                    name = self.get_localization(ability['nameKey'])
+                    desc = self.get_localization(ability['descKey'])
                     imageUrl = ability['icon']
                     self.cursor.execute(queries.insert_ability, (ability['id'], None, name, desc, 1, False, False, None, imageUrl))
                     self.cursor.execute(queries.insert_unit_ability, (unitId, ability['id']))
@@ -160,9 +175,9 @@ class DataLoader:
         omiMode = skill['omicronMode'] if isOmicron else None
 
         ability = abilities[skill['abilityReference']]
-        name = self.localization[ability['nameKey']]
+        name = self.get_localization(ability['nameKey'])
         descKey = ability['tier'][-1]['descKey']
-        desc = self.localization[descKey]
+        desc = self.get_localization(descKey)
         imageUrl = ability["icon"]
         return ability['id'], id, name, desc, maxLevel, isZeta, isOmicron, omiMode, imageUrl
     
@@ -184,5 +199,5 @@ class DataLoader:
     
     def load_portraits(self):
         for portrait in self.gameData['playerPortrait']:
-            self.cursor.execute(queries.insert_portrait, (portrait['id'], self.localization[portrait['nameKey']], portrait['icon']))
+            self.cursor.execute(queries.insert_portrait, (portrait['id'], self.get_localization(portrait['nameKey']), portrait['icon']))
         self.connection.commit()

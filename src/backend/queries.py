@@ -65,6 +65,15 @@ class Queries:
     ON CONFLICT (id) DO UPDATE SET name = excluded.name, icon = excluded.icon
     '''
 
+    insert_localization = '''
+    INSERT INTO localization (key, value) VALUES (%s, %s) 
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    '''
+
+    get_localization = '''
+    SELECT value FROM localization WHERE key = %s
+    '''
+
     class roster:
         insert_roster = '''
         WITH old AS (

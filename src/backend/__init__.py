@@ -32,4 +32,3 @@ comlink = SwgohComlink(COMLINK_URL)
 dataloader = DataLoader(db, comlink)
 fleetpayout = FleetPayout(db, comlink)
 roster = Roster(db, comlink)
-localization = dataloader.localization

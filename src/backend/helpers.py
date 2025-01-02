@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone, time
 import random
 import discord
 from discord import app_commands
-from backend import db, comlink, localization, log
+from backend import db, comlink, log, dataloader
 
 DAILY_LOOP = time(23, 59, 30, tzinfo=timezone.utc) #Loop 30 seconds before midnight as a buffer
 HOURLY_LOOP = [time(h, 0, 0, tzinfo=timezone.utc) for h in range(24)]
@@ -64,8 +64,8 @@ def get_events():
     events = []
     for e in result:
         event = {
-            "name": localization[e["nameKey"]],
-            "desc": localization[e["descKey"]],
+            "name": dataloader.get_localization(e["nameKey"]),
+            "desc": dataloader.get_localization(e["descKey"]),
             "startTime": int(e['instance'][0]['startTime'])//1000,
             "endTime": int(e['instance'][0]['endTime'])//1000,
             "image": e['image']
