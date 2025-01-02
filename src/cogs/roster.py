@@ -1,4 +1,4 @@
-from backend import db, dataloader, roster
+from backend import db, dataloader, roster, log
 import backend.helpers as helpers
 import asyncio
 from datetime import datetime
@@ -50,6 +50,7 @@ class RosterCog(commands.Cog):
         reset_time = helpers.calculate_reset(offset)
         current = int(datetime.now().timestamp())
         delay = reset_time - current
+        log(f"Roster check for {name} in {delay} seconds/{datetime.fromtimestamp(reset_time).strftime('%H:%M:%S')}")
         await asyncio.sleep(delay)
 
         output = {}

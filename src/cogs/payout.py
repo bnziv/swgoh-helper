@@ -1,4 +1,4 @@
-from backend import db
+from backend import db, log
 import backend.helpers as helpers
 from datetime import datetime
 import discord
@@ -30,6 +30,7 @@ class Payouts(commands.Cog):
             delay = 0
         else:
             delay = notify_time - current
+        log(f"Notify payout for {allycode} in {delay} seconds/{datetime.fromtimestamp(notify_time).strftime('%H:%M:%S')}")
         await asyncio.sleep(delay)
         embed.description = f"Fleet payout for **{name}** ({allycode}) is <t:{payout_time}:R>\nSending alerts for next available battle until payout"
         start_message = await helpers.send_dm(self.bot, discord_id, embed)

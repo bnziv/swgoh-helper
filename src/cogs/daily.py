@@ -1,4 +1,4 @@
-from backend import db
+from backend import db, log
 import backend.helpers as helpers
 import discord
 from discord.ext import commands, tasks
@@ -19,6 +19,7 @@ class Dailies(commands.Cog):
         user = self.bot.get_user(int(discord_id))
         energy_time = helpers.calculate_reset(offset) + energy_timing
         delay = energy_time - current
+        log(f"Energy for {name} in {delay} seconds/{datetime.fromtimestamp(energy_time).strftime('%H:%M:%S')}")
         await asyncio.sleep(delay)
         message = helpers.send_dm(self.bot, discord_id, embed)
         if not message:
@@ -48,6 +49,7 @@ class Dailies(commands.Cog):
         user = self.bot.get_user(int(discord_id))
         reset_time = helpers.calculate_reset(offset)
         delay = reset_time - current
+        log(f"Daily reset for {name} in {delay} seconds/{datetime.fromtimestamp(reset_time).strftime('%H:%M:%S')}")
         await asyncio.sleep(delay)
         message = helpers.send_dm(bot=self.bot, discord=discord_id, embed=embed)
         if not message:
