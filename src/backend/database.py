@@ -5,8 +5,6 @@ from backend import log, queries
 
 class Database:
     def __init__(self):
-        self.user = os.getenv('DB_USERNAME')
-        self.password = os.getenv('DB_PASSWORD')
         self.pool = None
 
     async def connect(self):
@@ -26,6 +24,14 @@ class Database:
     
     async def create_tables(self):
         await self.execute(queries.create_tables)
+    
+    async def transaction(self, function):
+        """
+        Run a function inside a transaction
+        """
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                await function(conn)
 
     async def execute(self, query, *args):
         async with self.pool.acquire() as conn:
@@ -38,3 +44,7 @@ class Database:
     async def fetch(self, query, *args):
         async with self.pool.acquire() as conn:
             return await conn.fetch(query, *args)
+    
+    async def fetchval(self, query, *args):
+        async with self.pool.acquire() as conn:
+            return await conn.fetchval(query, *args)

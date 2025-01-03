@@ -17,12 +17,6 @@ from backend.roster import Roster
 
 COMLINK_URL = os.getenv('COMLINK_URL')
 
-db = Database()
-comlink = None
-dataloader = None
-fleetpayout = None
-roster = None
-
 def comlink_ready():
     try:
         requests.get(COMLINK_URL)
@@ -32,13 +26,17 @@ def comlink_ready():
         log("Error connecting to Comlink")
         return False
 
+db = Database()
+while not comlink_ready():
+    time.sleep(2)
+comlink = SwgohComlink(COMLINK_URL)
+dataloader = DataLoader(db, comlink)
+fleetpayout = FleetPayout(db, comlink)
+roster = Roster(db, comlink)
+
 async def initialize():
-    global db, comlink, dataloader, fleetpayout, roster
+    """
+    Initialize database connection
+    """
+    global db
     await db.connect()
-    log("Done")
-    while not comlink_ready():
-        time.sleep(2)
-    comlink = SwgohComlink(COMLINK_URL)
-    dataloader = DataLoader(db, comlink)
-    fleetpayout = FleetPayout(db, comlink)
-    roster = Roster(db, comlink)

@@ -3,25 +3,25 @@ class Queries:
         pass
 
     insert_game_version = '''
-    INSERT INTO game_version (version) VALUES (%s)
+    INSERT INTO game_version (version) VALUES ($1)
     ON CONFLICT (version) DO NOTHING;
     '''
 
     insert_unit = '''
-    INSERT INTO units (unit_id, name, description, image_url) VALUES (%s, %s, %s, %s)
+    INSERT INTO units (unit_id, name, description, image_url) VALUES ($1, $2, $3, $4)
     ON CONFLICT (unit_id) DO UPDATE SET
     name = excluded.name,
     description = excluded.description;
     '''
 
     insert_tag = '''
-    INSERT INTO tags (tag_id, name) VALUES (%s, %s)
+    INSERT INTO tags (tag_id, name) VALUES ($1, $2)
     ON CONFLICT (tag_id) DO UPDATE SET
     name = excluded.name;
     '''
 
     insert_unit_tag = ''' 
-    INSERT INTO unit_tags (unit_id, tag_id) VALUES (%s, %s)
+    INSERT INTO unit_tags (unit_id, tag_id) VALUES ($1, $2)
     ON CONFLICT (unit_id, tag_id) DO NOTHING
     '''
 
@@ -36,7 +36,7 @@ class Queries:
 
     insert_ability = '''
     INSERT INTO abilities (ability_id, skill_id, name, description, max_level, is_zeta, is_omicron, omicron_mode, image_url) 
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     ON CONFLICT (ability_id) DO UPDATE SET
     name = excluded.name,
     description = excluded.description,
@@ -49,29 +49,29 @@ class Queries:
     '''
 
     insert_ability_upgrade = '''
-    INSERT INTO ability_upgrades (zeta_level, omicron_level, skill_id) VALUES (%s, %s, %s)
+    INSERT INTO ability_upgrades (zeta_level, omicron_level, skill_id) VALUES ($1, $2, $3)
     ON CONFLICT (skill_id) DO UPDATE SET
     zeta_level = excluded.zeta_level,
     omicron_level = excluded.omicron_level;
     '''
 
     insert_unit_ability = '''
-    INSERT INTO unit_abilities (unit_id, ability_id) VALUES (%s, %s)
+    INSERT INTO unit_abilities (unit_id, ability_id) VALUES ($1, $2)
     ON CONFLICT (unit_id, ability_id) DO NOTHING
     '''
 
     insert_portrait = '''
-    INSERT INTO portraits (id, name, icon) VALUES (%s, %s, %s)
+    INSERT INTO portraits (id, name, icon) VALUES ($1, $2, $3)
     ON CONFLICT (id) DO UPDATE SET name = excluded.name, icon = excluded.icon
     '''
 
     insert_localization = '''
-    INSERT INTO localization (key, value) VALUES (%s, %s) 
+    INSERT INTO localization (key, value) VALUES ($1, $2) 
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
     '''
 
     get_localization = '''
-    SELECT value FROM localization WHERE key = %s
+    SELECT value FROM localization WHERE key = $1
     '''
 
     class roster:
