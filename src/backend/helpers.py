@@ -85,7 +85,10 @@ async def send_dm(bot, discord_id, embed):
     Helper function to send a DM to a user, retrying up to 5 times if it fails
     Returns the message
     """
-    user = bot.get_user(int(discord_id))
+    user = await bot.fetch_user(int(discord_id))
+    if not user:
+        log(f"Could not get user {discord_id}")
+        return
     for _ in range(5):
         try:
             message = await user.send(embed=embed)

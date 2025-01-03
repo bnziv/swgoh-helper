@@ -38,13 +38,28 @@ class Database:
             return await conn.execute(query, *args)
     
     async def fetchone(self, query, *args):
+        """
+        Fetch one row from the database
+
+        Returns a dictionary
+        """
         async with self.pool.acquire() as conn:
             return await conn.fetchrow(query, *args)
     
     async def fetch(self, query, *args):
+        """
+        Fetch multiple rows from the database
+
+        Returns a list of dictionaries
+        """
         async with self.pool.acquire() as conn:
             return await conn.fetch(query, *args)
     
     async def fetchval(self, query, *args):
+        """
+        Fetch one value from the database
+
+        Returns a single value
+        """
         async with self.pool.acquire() as conn:
             return await conn.fetchval(query, *args)

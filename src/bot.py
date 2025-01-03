@@ -13,13 +13,13 @@ bot = commands.Bot(command_prefix='?', intents=discord.Intents.all())
 
 @bot.event
 async def setup_hook():
+    await initialize()
     for cog in cogs:    
         await bot.load_extension(f"cogs.{cog}")
     await bot.tree.sync()
 
 @bot.event
 async def on_ready():
-    await initialize()
     log("Bot started")
     update_loop.start()
 
