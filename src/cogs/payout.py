@@ -16,9 +16,9 @@ class Payouts(commands.Cog):
     @tasks.loop(time=helpers.DAILY_LOOP)
     async def start_notify_payouts(self):
         query = '''SELECT allycode, discord_id, name, time_offset FROM linked_accounts WHERE notify_payout IS TRUE'''
-        db.cursor.execute(query)
-        result = db.cursor.fetchall()
-        for user in result:
+        result = await db.fetch(query)
+        for row in result:
+            user = (row['allycode'], row['discord_id'], row['name'], row['time_offset'])
             asyncio.create_task(self.notify_payout(*user))
 
     async def notify_payout(self, allycode, discord_id, name, offset):

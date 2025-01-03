@@ -1,5 +1,5 @@
 from backend import initialize, dataloader, log
-from backend.helpers import HOURLY_LOOP
+from backend.helpers import HOURLY_LOOP, UPDATE_LOOP
 import asyncio
 import os
 import discord
@@ -43,7 +43,7 @@ async def clear(interaction: discord.Interaction, amount: int):
 
     await interaction.edit_original_response(content=f"Done")
 
-@tasks.loop(time=HOURLY_LOOP)
+@tasks.loop(time=UPDATE_LOOP)
 async def update_loop():
     await dataloader.check_version()
 

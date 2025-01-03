@@ -3,8 +3,8 @@ from datetime import datetime
 import requests
 import time
 
-def log(message):
-    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {message}")
+def log(message, level="INFO"):
+    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} {level.upper()}\t{message}")
 
 from swgoh_comlink import SwgohComlink
 from backend.queries import Queries
@@ -23,7 +23,7 @@ def comlink_ready():
         log("Connected to Comlink")
         return True
     except:
-        log("Error connecting to Comlink")
+        log("Error connecting to Comlink", "warning")
         return False
 
 db = Database()

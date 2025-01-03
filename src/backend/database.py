@@ -16,10 +16,10 @@ class Database:
                 break
             except Exception as e:
                 if attempts < 4:
-                    log(f"Database connection failed ({e}). Retrying...")
+                    log(f"Database connection failed ({e}). Retrying...", "warning")
                     time.sleep(3)
                 else:
-                    log("Could not connect to database.")
+                    log("Could not connect to database.", "error")
                     exit(1)
     
     async def create_tables(self):
