@@ -1,4 +1,4 @@
-from backend import dataloader, log
+from backend import initialize, dataloader, log
 from backend.helpers import HOURLY_LOOP
 import asyncio
 import os
@@ -19,6 +19,7 @@ async def setup_hook():
 
 @bot.event
 async def on_ready():
+    await initialize()
     log("Bot started")
     update_loop.start()
 

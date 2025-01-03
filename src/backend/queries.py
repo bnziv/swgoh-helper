@@ -121,3 +121,92 @@ class Queries:
                     (SELECT level FROM old) AS old_level,
                     roster_unit_abilities.level AS new_level;
         '''
+    
+    create_tables = '''
+        CREATE TABLE IF NOT EXISTS game_version (
+            version VARCHAR PRIMARY KEY,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS localization (
+            key VARCHAR PRIMARY KEY,
+            value VARCHAR
+        );
+        CREATE TABLE IF NOT EXISTS units (
+            unit_id VARCHAR PRIMARY KEY,
+            name VARCHAR,
+            description VARCHAR,
+            image_url VARCHAR
+        );
+        CREATE TABLE IF NOT EXISTS tags (
+            tag_id VARCHAR PRIMARY KEY,
+            name VARCHAR
+        );
+        CREATE TABLE IF NOT EXISTS unit_tags (
+            unit_id VARCHAR REFERENCES units(unit_id) ON UPDATE CASCADE ON DELETE CASCADE,
+            tag_id VARCHAR REFERENCES tags(tag_id) ON UPDATE CASCADE ON DELETE CASCADE,
+            PRIMARY KEY (unit_id, tag_id)
+        );
+        CREATE TABLE IF NOT EXISTS abilities (
+            ability_id VARCHAR PRIMARY KEY,
+            skill_id VARCHAR UNIQUE,
+            name VARCHAR,
+            description VARCHAR,
+            max_level INT,
+            is_zeta BOOLEAN,
+            is_omicron BOOLEAN,
+            omicron_mode INT DEFAULT NULL,
+            image_url VARCHAR
+        );
+        CREATE TABLE IF NOT EXISTS ability_upgrades (
+            id SERIAL PRIMARY KEY,
+            zeta_level INT DEFAULT NULL,
+            omicron_level INT DEFAULT NULL,
+            skill_id VARCHAR REFERENCES abilities(skill_id) ON UPDATE CASCADE ON DELETE CASCADE,
+            UNIQUE (skill_id)
+        );
+        CREATE TABLE IF NOT EXISTS unit_abilities (
+            unit_id VARCHAR REFERENCES units(unit_id) ON UPDATE CASCADE ON DELETE CASCADE,
+            ability_id VARCHAR REFERENCES abilities(ability_id) ON UPDATE CASCADE ON DELETE CASCADE,
+            PRIMARY KEY (unit_id, ability_id)
+        );
+        CREATE TABLE IF NOT EXISTS discord_users (
+            discord_id VARCHAR(20) PRIMARY KEY,
+            notify_events BOOLEAN DEFAULT TRUE
+        );
+        CREATE TABLE IF NOT EXISTS linked_accounts (
+            allycode INT PRIMARY KEY,
+            name VARCHAR,
+            time_offset INT,
+            notify_payout BOOLEAN DEFAULT TRUE,
+            notify_energy BOOLEAN DEFAULT TRUE,
+            notify_roster BOOLEAN DEFAULT TRUE,
+            discord_id VARCHAR REFERENCES discord_users(discord_id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS fleet_shard_players (
+            allycode INT PRIMARY KEY,
+            name VARCHAR,
+            time_offset INT,
+            part_of INT REFERENCES linked_accounts(allycode)
+        );
+        CREATE TABLE IF NOT EXISTS roster_units (
+            id VARCHAR PRIMARY KEY,
+            unit_id VARCHAR REFERENCES units(unit_id) ON DELETE CASCADE,
+            level INT,
+            star_level INT,
+            gear_level INT,
+            relic_level INT DEFAULT NULL,
+            ultimate_ability BOOLEAN DEFAULT FALSE,
+            owner INT REFERENCES linked_accounts(allycode) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS roster_unit_abilities (
+            skill_id VARCHAR REFERENCES abilities(skill_id) ON DELETE CASCADE,
+            unit_id VARCHAR REFERENCES roster_units(id) ON DELETE CASCADE,
+            level INT,
+            PRIMARY KEY (skill_id, unit_id)
+        );
+        CREATE TABLE IF NOT EXISTS portraits (
+            id VARCHAR PRIMARY KEY,
+            name VARCHAR,
+            icon VARCHAR
+        );
+        '''
