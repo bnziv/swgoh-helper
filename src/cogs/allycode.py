@@ -25,13 +25,9 @@ class Allycode(commands.Cog):
         """
         embed = AllycodeEmbed()
         discord_id = interaction.user.id
-        checkQuery = '''
-        SELECT allycode, discord_id FROM linked_accounts WHERE allycode = %s
-        '''
-        db.cursor.execute(checkQuery, (allycode,))
-        result = db.cursor.fetchall()
-        if len(result) != 0:
-            if int(result[0][1]) == discord_id:
+        result = await db.fetchone("SELECT allycode, discord_id FROM linked_accounts WHERE allycode = $1", allycode)
+        if result:
+            if int(result['discord_id']) == discord_id:
                 embed.description = "This allycode is already linked to your Discord account"
             else:
                 embed.description = "This allycode is already linked to another Discord account"
@@ -50,8 +46,7 @@ class Allycode(commands.Cog):
             portrait_id = result['selectedPlayerPortrait']['id']
         else:
             portrait_id = "PLAYERPORTRAIT_DEFAULT"
-        db.cursor.execute("SELECT icon FROM portraits WHERE id = %s", (portrait_id,))
-        portrait = db.cursor.fetchone()[0]
+        portrait = await db.fetchval("SELECT icon FROM portraits WHERE id = $1", portrait_id)
 
         embed.title = f"Confirmation"
         embed.description = f"Are you sure you want to link **{name}** ({allycode}) to your Discord account?"
@@ -79,10 +74,13 @@ class Allycode(commands.Cog):
             await confirmation.delete()
             return
         
-        db.cursor.execute(queries.insert_discord_user, (discord_id,))
-        db.cursor.execute(queries.insert_linked_account, (allycode, discord_id, name, offset))
-        roster.insert_roster(allycode, update=False)
-        db.connection.commit()
+        embed.description = f"Linking **{name}** ({allycode}) to your Discord account..."
+        await interaction.edit_original_response(embed=embed)
+
+        await db.execute(queries.insert_discord_user, str(discord_id))
+        await db.execute(queries.insert_linked_account, allycode, str(discord_id), name, offset)
+        await roster.insert_roster(allycode, update=False)
+
         embed.title = "Success"
         embed.description = f"**{name}** ({allycode}) is now linked to your Discord account"
         await interaction.edit_original_response(embed=embed)
@@ -93,16 +91,15 @@ class Allycode(commands.Cog):
         Get all allycodes linked to your Discord account
         """
         query = '''
-        SELECT allycode, name FROM linked_accounts WHERE discord_id = %s
+        SELECT allycode, name FROM linked_accounts WHERE discord_id = $1
         '''
-        db.cursor.execute(query, (str(interaction.user.id),))
-        result = db.cursor.fetchall()
+        result = await db.fetch(query, str(interaction.user.id))
         embed = AllycodeEmbed(title="Your allycodes")
         if len(result) == 0:
             embed.description = "You have no allycodes linked to your Discord account"
         else:
-            for allycode, name in result:
-                embed.add_field(name=allycode, value=name, inline=False)
+            for row in result:
+                embed.add_field(name=row['allycode'], value=row['name'], inline=False)
         await interaction.response.send_message(embed=embed)
     
     @allycode.command(name="remove")
@@ -114,11 +111,10 @@ class Allycode(commands.Cog):
             allycode (int): The allycode of the SWGOH account
         """
         query = '''
-        DELETE FROM linked_accounts WHERE allycode = %s AND discord_id = %s
+        DELETE FROM linked_accounts WHERE allycode = $1 AND discord_id = $2
         '''
-        db.cursor.execute(query, (allycode, str(interaction.user.id),))
-        db.connection.commit()
-        if db.cursor.rowcount == 0:
+        result = await db.execute(query, allycode, str(interaction.user.id))
+        if result == "DELETE 0":
             await interaction.response.send_message("This allycode is not linked to your Discord account")
         else:
             await interaction.response.send_message("This allycode has been removed from your Discord account")

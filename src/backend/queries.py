@@ -26,12 +26,12 @@ class Queries:
     '''
 
     insert_discord_user = '''
-    INSERT INTO discord_users (discord_id) VALUES (%s) 
+    INSERT INTO discord_users (discord_id) VALUES ($1) 
     ON CONFLICT (discord_id) DO NOTHING
     '''
     
     insert_linked_account = '''
-    INSERT INTO linked_accounts (allycode, discord_id, name, time_offset) VALUES (%s, %s, %s, %s)
+    INSERT INTO linked_accounts (allycode, discord_id, name, time_offset) VALUES ($1, $2, $3, $4)
     '''
 
     insert_ability = '''

@@ -52,7 +52,7 @@ def calculate_reset(offset):
         reset += timedelta(days=1)
     return int(reset.timestamp())
 
-def get_events():
+async def get_events():
     """
     Returns a list of all scheduled events
     """
@@ -64,8 +64,8 @@ def get_events():
     events = []
     for e in result:
         event = {
-            "name": dataloader.get_localization(e["nameKey"]),
-            "desc": dataloader.get_localization(e["descKey"]),
+            "name": await dataloader.get_localization(e["nameKey"]),
+            "desc": await dataloader.get_localization(e["descKey"]),
             "startTime": int(e['instance'][0]['startTime'])//1000,
             "endTime": int(e['instance'][0]['endTime'])//1000,
             "image": e['image']
