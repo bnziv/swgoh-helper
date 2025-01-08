@@ -176,7 +176,7 @@ class Queries:
             name VARCHAR,
             time_offset INT,
             notify_payout BOOLEAN DEFAULT TRUE,
-            notify_energy BOOLEAN DEFAULT TRUE,
+            notify_daily BOOLEAN DEFAULT TRUE,
             notify_roster BOOLEAN DEFAULT TRUE,
             discord_id VARCHAR REFERENCES discord_users(discord_id) ON DELETE CASCADE
         );
