@@ -1,12 +1,10 @@
 import asyncio
-from datetime import datetime
-import time
 from backend.database import Database
-from swgoh_comlink import SwgohComlink
+from async_comlink import AsyncComlink
 from backend import queries, log
 
 class DataLoader:
-    def __init__(self, database: Database, comlink: SwgohComlink):
+    def __init__(self, database: Database, comlink: AsyncComlink):
         self.db = database
         self.comlink = comlink
     
@@ -14,7 +12,7 @@ class DataLoader:
         """
         Check comlink data version with database and update if necessary
         """
-        version = self.comlink.get_latest_game_data_version()['game']
+        version = (await self.comlink.get_latest_game_version())['game']
         query = '''
         SELECT version FROM game_version ORDER BY timestamp DESC LIMIT 1
         '''
@@ -27,11 +25,11 @@ class DataLoader:
         else:
             log("Database is up to date")
         
-    def convert_localization(self, tuples=False):
+    async def convert_localization(self, tuples=False):
         """
         Convert the Comlink localization response into a dictionary or list of tuples
         """
-        data = self.comlink.get_localization(locale="ENG_US", unzip=True, enums=True)['Loc_ENG_US.txt']
+        data = (await self.comlink.get_localization(locale="ENG_US", unzip=True, enums=True))['Loc_ENG_US.txt']
         lines = data.strip().split('\n')
         if tuples:
             localization = []
@@ -61,9 +59,9 @@ class DataLoader:
         await self.load_localization()
         log("Loading tags...")
         await self.load_tags()
-        skills = self.comlink.get_game_data(items="SkillDefinitions")
+        skills = await self.comlink.get_game_data(items="skill")
         skills = {s['id']: s for s in skills['skill']}
-        abilities = self.comlink.get_game_data(items="AbilityDefinitions")
+        abilities = await self.comlink.get_game_data(items="ability")
         abilities = {a['id']: a for a in abilities['ability']}
         await asyncio.sleep(20) #Sleep for Comlink memory release
         log("Loading units...")
@@ -78,7 +76,7 @@ class DataLoader:
         Load localization into the database
         """
         async def function(connection):
-            localization = self.convert_localization(tuples=True)
+            localization = await self.convert_localization(tuples=True)
             await connection.executemany(queries.insert_localization, localization)
 
         await self.db.transaction(function)
@@ -89,7 +87,7 @@ class DataLoader:
         """
         #Load all units, tags and their abilities in one transaction
         async def function(connection):
-            game_data = self.comlink.get_game_data(items="UnitDefinitions")
+            game_data = await self.comlink.get_game_data(items="units")
             result = await connection.fetch("SELECT tag_id from tags")
             visibleTags = {row['tag_id'] for row in result}
             processedUnits = set()
@@ -119,7 +117,7 @@ class DataLoader:
         Load all visible tags into the database
         """
         async def function(connection):
-            game_data = self.comlink.get_game_data(items="CategoryDefinitions")
+            game_data = await self.comlink.get_game_data(items="category")
             data = []
             for tag in game_data['category']:
                 if not tag['visible'] or tag['id'] == 'eventonly':
@@ -206,7 +204,7 @@ class DataLoader:
         Load all player portraits into the database
         """
         async def function(connection):
-            game_data = self.comlink.get_game_data(items="PlayerPortaitDefinitions") #Typo intended due to wrapper
+            game_data = await self.comlink.get_game_data(items="playerPortrait")
             data = []
             for portrait in game_data['playerPortrait']:
                 data.append((portrait['id'], await self.get_localization(portrait['nameKey']), portrait['icon']))

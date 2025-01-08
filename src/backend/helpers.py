@@ -36,14 +36,14 @@ async def tag_autocomplete(interaction: discord.Interaction, current: str) -> li
     matches = [tag for tag in TAG_CACHE["tags"] if current.lower() in tag.lower()]
     return [app_commands.Choice(name=match, value=match) for match in matches][:25]
 
-def allycode_check(allycode):
+async def allycode_check(allycode):
     """
     Validates input for a valid allycode
     """
     if len(str(allycode)) != 9:
         return "Allycode must be 9 digits long"
     
-    result = comlink.get_player(allycode=allycode)
+    result = await comlink.get_player(allycode=allycode)
     if "message" in result.keys():
         return f"An account with allycode {allycode} could not be found"
     
@@ -73,9 +73,9 @@ async def get_events():
     """
     Returns a list of all scheduled events
     """
-    result = comlink.get_events(enums=True).get('gameEvent')
+    result = (await comlink.get_events(enums=True)).get('gameEvent')
     while result is None:
-        result = comlink.get_events(enums=True).get('gameEvent')
+        result = (await comlink.get_events(enums=True)).get('gameEvent')
         asyncio.sleep(1)
     result = [r for r in result if 'challenge' not in r['id'] and 'shipevent_SC' not in r['id'] and 'GA2' not in r['id'] and r['type'] == "SCHEDULED"]
     events = []
@@ -90,10 +90,10 @@ async def get_events():
         events.append(event)
     return events
 
-def get_player_rank(allycode):
-    player = comlink.get_player_arena(allycode=allycode, player_details_only=True).get('pvpProfile')
+async def get_player_rank(allycode):
+    player = (await comlink.get_player_arena(allycode=allycode, player_details_only=True)).get('pvpProfile')
     while player is None:
-        player = comlink.get_player_arena(allycode=allycode, player_details_only=True).get('pvpProfile')
+        player = (await comlink.get_player_arena(allycode=allycode, player_details_only=True)).get('pvpProfile')
         asyncio.sleep(1)
     return player[1]['rank']
 

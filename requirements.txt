@@ -4,3 +4,4 @@ swgoh_comlink
 titlecase
 unidecode
 asyncpg
+async-comlink

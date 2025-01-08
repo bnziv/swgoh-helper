@@ -65,7 +65,7 @@ class Fleet(commands.Cog):
             name = result['name']
             offset = result['time_offset']
         else:
-            result = helpers.allycode_check(allycode)
+            result = await helpers.allycode_check(allycode)
             if type(result) == str:
                 embed.description = result
                 await interaction.response.send_message(embed=embed)
@@ -88,7 +88,7 @@ class Fleet(commands.Cog):
             allycode (int): The allycode of the player
         """
         embed = FleetEmbed()
-        result = helpers.allycode_check(allycode)
+        result = await helpers.allycode_check(allycode)
         if type(result) == str:
             embed.description = result
             await interaction.response.send_message(embed=embed)

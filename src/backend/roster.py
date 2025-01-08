@@ -7,11 +7,11 @@ class Roster:
         self.db = database
         self.comlink = comlink
 
-    def get_roster(self, allycode):
+    async def get_roster(self, allycode):
         """
         Returns a two dictionaries for the allycode's roster, units and unit skills
         """
-        data = self.comlink.get_player(allycode=allycode)['rosterUnit']
+        data = (await self.comlink.get_player(allycode=allycode))['rosterUnit']
         units = {}
         unit_skills = {}
         for unit in data:
@@ -35,7 +35,7 @@ class Roster:
         """
         Inserts the allycode's roster into the database and returns the updated rows if the update flag is True
         """
-        units, unit_skills = self.get_roster(allycode)
+        units, unit_skills = await self.get_roster(allycode)
         updates = []
         # Iterate through each unit
         for unit_id, unit_data in units.items():

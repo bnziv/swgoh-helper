@@ -6,7 +6,7 @@ import time
 def log(message, level="INFO"):
     print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} {level.upper()}\t{message}")
 
-from swgoh_comlink import SwgohComlink
+from async_comlink import AsyncComlink
 from backend.queries import Queries
 queries = Queries()
 
@@ -29,7 +29,7 @@ def comlink_ready():
 db = Database()
 while not comlink_ready():
     time.sleep(2)
-comlink = SwgohComlink(COMLINK_URL)
+comlink = AsyncComlink(url=COMLINK_URL)
 dataloader = DataLoader(db, comlink)
 fleetpayout = FleetPayout(db, comlink)
 roster = Roster(db, comlink)

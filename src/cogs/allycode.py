@@ -34,7 +34,7 @@ class Allycode(commands.Cog):
             await interaction.response.send_message(embed=embed)
             return
         
-        result = helpers.allycode_check(allycode)
+        result = await helpers.allycode_check(allycode)
         if type(result) == str:
             embed.description = result
             await interaction.response.send_message(embed=embed)

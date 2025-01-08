@@ -41,10 +41,10 @@ class Payouts(commands.Cog):
     async def rank_listener(self, allycode, discord_id, name, payout_time, start_message):
         next_battle_message = warning_message = None
         embed = PayoutEmbed()
-        current_rank = helpers.get_player_rank(allycode=allycode)
+        current_rank = await helpers.get_player_rank(allycode=allycode)
         battles = 0
         while datetime.now().timestamp() < payout_time:
-            new_rank = helpers.get_player_rank(allycode=allycode)
+            new_rank = await helpers.get_player_rank(allycode=allycode)
             if new_rank < current_rank:
                 battles += 1
                 current_rank = new_rank
