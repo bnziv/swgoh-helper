@@ -5,8 +5,6 @@ from backend import queries
 class Roster:
     def __init__(self, database: Database, comlink: SwgohComlink):
         self.db = database
-        self.connection = self.db.connection
-        self.cursor = self.db.cursor
         self.comlink = comlink
 
     def get_roster(self, allycode):
@@ -33,7 +31,7 @@ class Roster:
         
         return units, unit_skills
     
-    def insert_roster(self, allycode, update=True):
+    async def insert_roster(self, allycode, update=True):
         """
         Inserts the allycode's roster into the database and returns the updated rows if the update flag is True
         """
@@ -41,35 +39,29 @@ class Roster:
         updates = []
         # Iterate through each unit
         for unit_id, unit_data in units.items():
-            self.cursor.execute(queries.roster.insert_roster, (unit_id, unit_id, unit_data['baseId'], unit_data['level'], unit_data['stars'], unit_data['gearLevel'], unit_data['relicLevel'], unit_data['ultimate'], allycode))
-            if update:
-                results = self.cursor.fetchone()
-                if results:
-                    updates.append(results)
+            results = await self.db.fetchone(queries.roster.insert_roster, unit_id, unit_data['baseId'], unit_data['level'], unit_data['stars'], unit_data['gearLevel'], unit_data['relicLevel'], unit_data['ultimate'], allycode)
+            if update and results:
+                updates.append(results)
 
             # Iterate through each unit's abilities
             for skill_id, skill_level in unit_skills[unit_id].items():
-                self.cursor.execute(queries.roster.insert_roster_abilities, (unit_id, skill_id, skill_id, unit_id, skill_level))
-                if update:
-                    results = self.cursor.fetchone()
-                    if results:
-                        updates.append(results)
+                results = await self.db.fetchone(queries.roster.insert_roster_abilities, unit_id, skill_id, skill_level)
+                if update and results:
+                    updates.append(results)
         
-        self.connection.commit()
         return updates
     
-    def get_upgrade_skill_data(self, id, old_level, new_level):
+    async def get_upgrade_skill_data(self, id, old_level, new_level):
         """
         Returns whether an ability upgrade is a zeta and/or omicron upgrade
         """
         zetaFlag = omicronFlag = False
-        self.cursor.execute('''SELECT zeta_level, omicron_level FROM ability_upgrades WHERE skill_id = %s''', (id,))
-        result = self.cursor.fetchone()
+        result = await self.db.fetchone('''SELECT zeta_level, omicron_level FROM ability_upgrades WHERE skill_id = $1''', id)
         if not result:
             return zetaFlag, omicronFlag
         
-        zeta_level = result[0]
-        omicron_level = result[1]
+        zeta_level = result['zeta_level']
+        omicron_level = result['omicron_level']
         purchased_levels = range(old_level+1, new_level+1)
         if zeta_level in purchased_levels:
             zetaFlag = True

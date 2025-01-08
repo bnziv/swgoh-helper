@@ -1,138 +1,65 @@
-import psycopg2
+import asyncpg
 import os
 import time
-from backend import log
+from backend import log, queries
 
 class Database:
     def __init__(self):
-        self.user = os.getenv('DB_USERNAME')
-        self.password = os.getenv('DB_PASSWORD')
-        self.connection = None
-        self.cursor = None
-        self.connect()
+        self.pool = None
 
-    def connect(self):
+    async def connect(self):
         for attempts in range(5):
             try:
-                self.connection = psycopg2.connect(os.getenv('DB_URL'))
+                self.pool = await asyncpg.create_pool(os.getenv('DB_URL'))
                 log("Connected to database.")
+                await self.create_tables()
                 break
-            except psycopg2.OperationalError as e:
+            except Exception as e:
                 if attempts < 4:
-                    log("Database connection failed. Retrying...")
+                    log(f"Database connection failed ({e}). Retrying...", "warning")
                     time.sleep(3)
                 else:
-                    log("Could not connect to database.")
+                    log("Could not connect to database.", "error")
                     exit(1)
+    
+    async def create_tables(self):
+        await self.execute(queries.create_tables)
+    
+    async def transaction(self, function):
+        """
+        Run a function inside a transaction
+        """
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                await function(conn)
 
-                    ### For manual db server setup ###
-                    # print("App database doesn't exist. Attempting to create 'swgoh'")
-                    # try: self.connection = psycopg2.connect(
-                    #         dbname='postgres',
-                    #         user=self.user,
-                    #         password=self.password
-                    #     )
-                    # except:
-                    #     print("Failed to connect to database or 'postgres' doesn't exist")
-                    #     exit(1)
-                    # self.connection.autocommit = True
-                    # self.cursor = self.connection.cursor()
-                    # self.cursor.execute("CREATE DATABASE swgoh")
-                    # self.connection.close()
-                    # self.connect()
+    async def execute(self, query, *args):
+        async with self.pool.acquire() as conn:
+            return await conn.execute(query, *args)
+    
+    async def fetchone(self, query, *args):
+        """
+        Fetch one row from the database
 
-        if self.connection:
-            self.cursor = self.connection.cursor()
-            self.create_tables()
+        Returns a dictionary
+        """
+        async with self.pool.acquire() as conn:
+            return await conn.fetchrow(query, *args)
+    
+    async def fetch(self, query, *args):
+        """
+        Fetch multiple rows from the database
 
-    def create_tables(self):
-        query = '''
-        CREATE TABLE IF NOT EXISTS game_version (
-            version VARCHAR PRIMARY KEY,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS localization (
-            key VARCHAR PRIMARY KEY,
-            value VARCHAR
-        );
-        CREATE TABLE IF NOT EXISTS units (
-            unit_id VARCHAR PRIMARY KEY,
-            name VARCHAR,
-            description VARCHAR,
-            image_url VARCHAR
-        );
-        CREATE TABLE IF NOT EXISTS tags (
-            tag_id VARCHAR PRIMARY KEY,
-            name VARCHAR
-        );
-        CREATE TABLE IF NOT EXISTS unit_tags (
-            unit_id VARCHAR REFERENCES units(unit_id) ON UPDATE CASCADE ON DELETE CASCADE,
-            tag_id VARCHAR REFERENCES tags(tag_id) ON UPDATE CASCADE ON DELETE CASCADE,
-            PRIMARY KEY (unit_id, tag_id)
-        );
-        CREATE TABLE IF NOT EXISTS abilities (
-            ability_id VARCHAR PRIMARY KEY,
-            skill_id VARCHAR UNIQUE,
-            name VARCHAR,
-            description VARCHAR,
-            max_level INT,
-            is_zeta BOOLEAN,
-            is_omicron BOOLEAN,
-            omicron_mode INT DEFAULT NULL,
-            image_url VARCHAR
-        );
-        CREATE TABLE IF NOT EXISTS ability_upgrades (
-            id SERIAL PRIMARY KEY,
-            zeta_level INT DEFAULT NULL,
-            omicron_level INT DEFAULT NULL,
-            skill_id VARCHAR REFERENCES abilities(skill_id) ON UPDATE CASCADE ON DELETE CASCADE,
-            UNIQUE (skill_id)
-        );
-        CREATE TABLE IF NOT EXISTS unit_abilities (
-            unit_id VARCHAR REFERENCES units(unit_id) ON UPDATE CASCADE ON DELETE CASCADE,
-            ability_id VARCHAR REFERENCES abilities(ability_id) ON UPDATE CASCADE ON DELETE CASCADE,
-            PRIMARY KEY (unit_id, ability_id)
-        );
-        CREATE TABLE IF NOT EXISTS discord_users (
-            discord_id VARCHAR(20) PRIMARY KEY,
-            notify_events BOOLEAN DEFAULT TRUE
-        );
-        CREATE TABLE IF NOT EXISTS linked_accounts (
-            allycode INT PRIMARY KEY,
-            name VARCHAR,
-            time_offset INT,
-            notify_payout BOOLEAN DEFAULT TRUE,
-            notify_energy BOOLEAN DEFAULT TRUE,
-            notify_roster BOOLEAN DEFAULT TRUE,
-            discord_id VARCHAR REFERENCES discord_users(discord_id) ON DELETE CASCADE
-        );
-        CREATE TABLE IF NOT EXISTS fleet_shard_players (
-            allycode INT PRIMARY KEY,
-            name VARCHAR,
-            time_offset INT,
-            part_of INT REFERENCES linked_accounts(allycode)
-        );
-        CREATE TABLE IF NOT EXISTS roster_units (
-            id VARCHAR PRIMARY KEY,
-            unit_id VARCHAR REFERENCES units(unit_id) ON DELETE CASCADE,
-            level INT,
-            star_level INT,
-            gear_level INT,
-            relic_level INT DEFAULT NULL,
-            ultimate_ability BOOLEAN DEFAULT FALSE,
-            owner INT REFERENCES linked_accounts(allycode) ON DELETE CASCADE
-        );
-        CREATE TABLE IF NOT EXISTS roster_unit_abilities (
-            skill_id VARCHAR REFERENCES abilities(skill_id) ON DELETE CASCADE,
-            unit_id VARCHAR REFERENCES roster_units(id) ON DELETE CASCADE,
-            level INT,
-            PRIMARY KEY (skill_id, unit_id)
-        );
-        CREATE TABLE IF NOT EXISTS portraits (
-            id VARCHAR PRIMARY KEY,
-            name VARCHAR,
-            icon VARCHAR
-        );
-        '''
-        self.cursor.execute(query)
-        self.connection.commit()
+        Returns a list of dictionaries
+        """
+        async with self.pool.acquire() as conn:
+            return await conn.fetch(query, *args)
+    
+    async def fetchval(self, query, *args):
+        """
+        Fetch one value from the database
+
+        Returns a single value
+        """
+        async with self.pool.acquire() as conn:
+            return await conn.fetchval(query, *args)

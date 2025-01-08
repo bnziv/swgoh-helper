@@ -1,4 +1,4 @@
-from backend import comlink, db
+from backend import db
 import backend.helpers as helpers
 import re
 from datetime import datetime
@@ -87,7 +87,7 @@ class Events(commands.Cog):
         """
         await interaction.response.send_message("Fetching events...")
         currentTime = int(datetime.now().timestamp())
-        events = [e for e in helpers.get_events() if currentTime >= e['startTime'] and currentTime < e['endTime']]
+        events = [e for e in await helpers.get_events() if currentTime >= e['startTime'] and currentTime < e['endTime']]
         events = sorted(events, key=lambda e: e['endTime'])
         if not embeds:
             embed = self.events_to_embed(events=events, type="current", embed_flag=embeds)
@@ -116,7 +116,7 @@ class Events(commands.Cog):
         """
         await interaction.response.send_message("Fetching events...")
         currentTime = int(datetime.now().timestamp())
-        events = [e for e in helpers.get_events() if currentTime < e['startTime']]
+        events = [e for e in await helpers.get_events() if currentTime < e['startTime']]
         events = sorted(events, key=lambda e: e['endTime'])
         if not embeds:
             embed = self.events_to_embed(events=events, type="upcoming", embed_flag=embeds)
@@ -137,15 +137,13 @@ class Events(commands.Cog):
     @tasks.loop(time=helpers.HOURLY_LOOP)
     async def started_events_listener(self):
         currentTime = int(datetime.now().timestamp())
-        events = [e for e in helpers.get_events() 
+        events = [e for e in await helpers.get_events() 
                   if e['startTime'] in range(currentTime - 5, currentTime + 5)] #Time margin of error
-        
         if events:
-            db.cursor.execute("SELECT discord_id FROM discord_users WHERE notify_events IS TRUE")
-            users = db.cursor.fetchall()
+            result = await db.fetch("SELECT discord_id FROM discord_users WHERE notify_events IS TRUE")
             embed = self.events_to_embed(events=events, type="started")
-            for user in users:
-                await helpers.send_dm(bot=self.bot, discord_id=user[0], embed=embed)
+            for user in result:
+                await helpers.send_dm(bot=self.bot, discord_id=user['discord_id'], embed=embed)
 
     @commands.Cog.listener()
     async def on_ready(self):

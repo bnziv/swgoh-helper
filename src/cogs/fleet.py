@@ -33,37 +33,37 @@ class Fleet(commands.Cog):
         #All flag
         #TODO: Handle more than 25 entries since embed field max is 25
         if all:
-            result = fleetpayout.get_all_payouts()
+            result = await fleetpayout.get_all_payouts()
             if len(result) == 0:
                 embed.description = "Your fleet shard is empty"
             else:
-                for allycode, name, offset in result:
+                for row in result:
                     embed.add_field(
-                        name = f"**{name}** ({allycode})",
-                        value = f"<t:{helpers.calculate_payout(offset)}:t>"
+                        name = f"**{row['name']}** ({row['allycode']})",
+                        value = f"<t:{helpers.calculate_payout(row['time_offset'])}:t>"
                         )
             await interaction.response.send_message(embed=embed)
             return
         
         #Name provided
         if name:
-            result = fleetpayout.get_payout(name=name)
+            result = await fleetpayout.get_payout(name=name)
             if len(result) == 0:
                 embed.description = f"'{name}' could not be found in your fleet shard"
             else:
-                for allycode, name, offset in result:
+                for row in result:
                     embed.add_field(
-                        name = f"**{name}** ({allycode})",
-                        value = f"<t:{helpers.calculate_payout(offset)}:t>"
+                        name = f"**{row['name']}** ({row['allycode']})",
+                        value = f"<t:{helpers.calculate_payout(row['time_offset'])}:t>"
                         )
             await interaction.response.send_message(embed=embed)
             return
         
         #Allycode provided
-        result = fleetpayout.get_payout(allycode=allycode)
+        result = await fleetpayout.get_payout(allycode=allycode)
         if len(result) != 0:
-            name = result[0][1]
-            offset = result[0][2]
+            name = result['name']
+            offset = result['time_offset']
         else:
             result = helpers.allycode_check(allycode)
             if type(result) == str:
@@ -95,14 +95,13 @@ class Fleet(commands.Cog):
             return
         name = result['name']
         offset = result['localTimeZoneOffsetMinutes']
-        db.cursor.execute('''SELECT allycode from linked_accounts WHERE discord_id = %s''', (str(interaction.user.id),))
-        result = db.cursor.fetchall()
+        result = await db.fetch('''SELECT allycode from linked_accounts WHERE discord_id = $1''', str(interaction.user.id))
         if len(result) == 0:
             embed.description = "Your Discord account is not linked to an allycode"
         else:
             #TODO: Add multi-account functionality (if len(result) > 1)
-            account_allycode = result[0][0]
-            fleetpayout.add_player(allycode, name, offset, account_allycode)
+            account_allycode = result[0]['allycode']
+            await fleetpayout.add_player(allycode, name, offset, account_allycode)
             embed.description = f"**{name}** ({allycode}) has been added to your fleet shard"
         await interaction.response.send_message(embed=embed)
 
@@ -120,7 +119,8 @@ class Fleet(commands.Cog):
             await interaction.response.send_message(embed=embed)
             return
         
-        if fleetpayout.remove_player(allycode):
+        result = await fleetpayout.remove_player(allycode)
+        if result:
             embed.description = f"**{allycode}** has been removed from your fleet shard"
         else:
             embed.description = f"**{allycode}** could not be found in your fleet shard"

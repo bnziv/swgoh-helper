@@ -8,16 +8,33 @@ from backend import db, comlink, log, dataloader
 
 DAILY_LOOP = time(23, 59, 30, tzinfo=timezone.utc) #Loop 30 seconds before midnight as a buffer
 HOURLY_LOOP = [time(h, 0, 0, tzinfo=timezone.utc) for h in range(24)]
+UPDATE_LOOP = [time(h, 30, 0, tzinfo=timezone.utc) for h in range(24)]
 
+CACHE_WINDOW = timedelta(minutes=5)
+
+UNIT_CACHE = {"units": [], "updated": None}
 async def unit_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
-    db.cursor.execute("SELECT name FROM units ORDER BY name;")
-    units = [app_commands.Choice(name=unit[0], value=unit[0]) for unit in db.cursor.fetchall()]
-    return [unit for unit in units if current.lower() in unit.name.lower()][:25]
+    global UNIT_CACHE
 
+    if not UNIT_CACHE["units"] or (datetime.now(timezone.utc) - UNIT_CACHE["updated"]) > CACHE_WINDOW:
+        results = await db.fetch("SELECT name FROM units ORDER BY name")
+        UNIT_CACHE["units"] = [row['name'] for row in results]
+        UNIT_CACHE["updated"] = datetime.now(timezone.utc)
+    
+    matches = [unit for unit in UNIT_CACHE["units"] if current.lower() in unit.lower()]
+    return [app_commands.Choice(name=match, value=match) for match in matches][:25]
+
+TAG_CACHE = {"tags": [], "updated": None}
 async def tag_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
-    db.cursor.execute("SELECT name FROM tags ORDER by name;")
-    tags = [app_commands.Choice(name=tag[0], value=tag[0]) for tag in db.cursor.fetchall()]
-    return [tag for tag in tags if current.lower() in tag.name.lower()][:25]
+    global TAG_CACHE
+
+    if not TAG_CACHE["tags"] or (datetime.now(timezone.utc) - TAG_CACHE["updated"]) > CACHE_WINDOW:
+        results = await db.fetch("SELECT name FROM tags ORDER BY name")
+        TAG_CACHE["tags"] = [row['name'] for row in results]
+        TAG_CACHE["updated"] = datetime.now(timezone.utc)
+
+    matches = [tag for tag in TAG_CACHE["tags"] if current.lower() in tag.lower()]
+    return [app_commands.Choice(name=match, value=match) for match in matches][:25]
 
 def allycode_check(allycode):
     """
@@ -52,7 +69,7 @@ def calculate_reset(offset):
         reset += timedelta(days=1)
     return int(reset.timestamp())
 
-def get_events():
+async def get_events():
     """
     Returns a list of all scheduled events
     """
@@ -64,8 +81,8 @@ def get_events():
     events = []
     for e in result:
         event = {
-            "name": dataloader.get_localization(e["nameKey"]),
-            "desc": dataloader.get_localization(e["descKey"]),
+            "name": await dataloader.get_localization(e["nameKey"]),
+            "desc": await dataloader.get_localization(e["descKey"]),
             "startTime": int(e['instance'][0]['startTime'])//1000,
             "endTime": int(e['instance'][0]['endTime'])//1000,
             "image": e['image']
@@ -85,18 +102,22 @@ async def send_dm(bot, discord_id, embed):
     Helper function to send a DM to a user, retrying up to 5 times if it fails
     Returns the message
     """
-    user = bot.get_user(int(discord_id))
+    user = await bot.fetch_user(int(discord_id))
+    if not user:
+        log(f"Could not get user {discord_id}", "error")
+        return
     for _ in range(5):
         try:
             message = await user.send(embed=embed)
             log(f"Sent DM to {discord_id}")
             return message
         except discord.errors.Forbidden: #Not allowed
-            log(f"Unable to send DM to {discord_id}")
+            log(f"Unable to send DM to {discord_id}", "error")
             return None
         except discord.errors.HTTPException: #Opening DM too fast
-            log(f"Failed to send DM to {discord_id}, retrying...")
+            log(f"Failed to send DM to {discord_id}, retrying...", "warning")
             await asyncio.sleep(random.randint(1, 3))
+    return None
 
 class EmbedPages(discord.ui.View):
     def __init__(self, embeds, interaction):

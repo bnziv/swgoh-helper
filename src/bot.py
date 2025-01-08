@@ -1,5 +1,5 @@
-from backend import dataloader, log
-from backend.helpers import HOURLY_LOOP
+from backend import initialize, dataloader, log
+from backend.helpers import HOURLY_LOOP, UPDATE_LOOP
 import asyncio
 import os
 import discord
@@ -13,6 +13,7 @@ bot = commands.Bot(command_prefix='?', intents=discord.Intents.all())
 
 @bot.event
 async def setup_hook():
+    await initialize()
     for cog in cogs:    
         await bot.load_extension(f"cogs.{cog}")
     await bot.tree.sync()
@@ -42,7 +43,7 @@ async def clear(interaction: discord.Interaction, amount: int):
 
     await interaction.edit_original_response(content=f"Done")
 
-@tasks.loop(time=HOURLY_LOOP)
+@tasks.loop(time=UPDATE_LOOP)
 async def update_loop():
     await dataloader.check_version()
 

@@ -1,4 +1,4 @@
-from backend import db, dataloader, roster, log
+from backend import db, roster, log
 import backend.helpers as helpers
 import asyncio
 from datetime import datetime
@@ -13,31 +13,28 @@ class RosterCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
       
-    def parse_update(self, update, dictionary):
-        db.cursor.execute(f"SELECT u.name FROM units u JOIN roster_units ru ON ru.unit_id = u.unit_id WHERE ru.id = '{update[0]}';")
-        unit_name = db.cursor.fetchone()[0]
-        if len(update) == 11: #Unit 
+    async def parse_update(self, update, dictionary):
+        unit_name = await db.fetchval(f"SELECT u.name FROM units u JOIN roster_units ru ON ru.unit_id = u.unit_id WHERE ru.id = '{update['unit_id']}';")
+        if len(update) == 9: #Unit 
             if unit_name not in dictionary:
                 dictionary[unit_name] = []
-            if update[1] == None:
+            if update['old_star'] == None:
                 dictionary[unit_name].append("Unlocked")
-            if update[3] and update[3] != update[4]:
-                dictionary[unit_name].append(f"Upgraded from {update[3]}* to {update[4]}*")
-            if update[5] != update[6]:
-                dictionary[unit_name].append(f"Upgraded from G{update[5] if update[5] else 1} to G{update[6]}")
-            if update[7] != update[8]:
-                dictionary[unit_name].append(f"Upgraded from R{update[7] if update[7] else 0} to R{update[8]}")
-            if not update[9] and update[10]:
-                db.cursor.execute(f'''SELECT a.name FROM abilities a JOIN unit_abilities ua ON a.ability_id = ua.ability_id 
+            if update['old_star'] and update['old_star'] != update['new_star']:
+                dictionary[unit_name].append(f"Upgraded from {update['old_star']}* to {update['new_star']}*")
+            if update['old_gear'] != update['new_gear']:
+                dictionary[unit_name].append(f"Upgraded from G{update['old_gear'] if update['old_gear'] else 1} to G{update['new_gear']}")
+            if update['old_relic'] != update['new_relic']:
+                dictionary[unit_name].append(f"Upgraded from R{update['old_relic'] if update['old_relic'] else 0} to R{update['new_relic']}")
+            if not update['old_ultimate'] and update['new_ultimate']:
+                ultimate_name = await db.fetchval(f'''SELECT a.name FROM abilities a JOIN unit_abilities ua ON a.ability_id = ua.ability_id 
                                   JOIN units u ON u.unit_id = ua.unit_id WHERE u.name = '{unit_name}' AND a.ability_id ILIKE 'ultimate%';''')
-                ability_name = db.cursor.fetchone()[0]
-                dictionary[unit_name].append(f"Unlocked Ultimate - {ability_name}")
+                dictionary[unit_name].append(f"Unlocked Ultimate - {ultimate_name}")
             
         elif len(update) == 4: #Ability
-            db.cursor.execute(f'''SELECT a.name FROM abilities a WHERE a.skill_id = '{update[1]}';''')
-            ability_name = db.cursor.fetchone()[0]
-            ability_type = update[1].capitalize().split('skill')[0]
-            zeta, omicron = roster.get_upgrade_skill_data(update[1], update[2] if update[2] else 1, update[3])
+            ability_name = await db.fetchval(f'''SELECT a.name FROM abilities a WHERE a.skill_id = '{update['skill_id']}';''')
+            ability_type = update['skill_id'].capitalize().split('skill')[0]
+            zeta, omicron = await roster.get_upgrade_skill_data(update['skill_id'], update['old_level'] if update['old_level'] else 1, update['new_level'])
             if (zeta or omicron) and unit_name not in dictionary:
                 dictionary[unit_name] = []
             if zeta:
@@ -54,10 +51,10 @@ class RosterCog(commands.Cog):
         await asyncio.sleep(delay)
 
         output = {}
-        updates = roster.insert_roster(allycode)
+        updates = await roster.insert_roster(allycode)
         if updates:
             for update in updates:
-                output = self.parse_update(update, output)
+                output = await self.parse_update(update, output)
         else:
             return
 
@@ -70,6 +67,8 @@ class RosterCog(commands.Cog):
             if 'Unlocked' in upgrades:
                 description += f"Unlocked **{unit_name}**\n"
                 upgrades.remove('Unlocked')
+                if len(upgrades) == 0:
+                    continue
             embed.add_field(name=unit_name, value='\n'.join(upgrades), inline=False)
             field_count += 1
         
@@ -79,9 +78,10 @@ class RosterCog(commands.Cog):
 
     @tasks.loop(time=helpers.DAILY_LOOP)
     async def start_listeners(self):
-        db.cursor.execute("SELECT allycode, discord_id, name, time_offset FROM linked_accounts WHERE notify_roster IS TRUE")
-        for result in db.cursor.fetchall():
-            asyncio.create_task(self.roster_listener(*result))
+        result = await db.fetch("SELECT allycode, discord_id, name, time_offset FROM linked_accounts WHERE notify_roster IS TRUE")
+        for row in result:
+            user = (row['allycode'], row['discord_id'], row['name'], row['time_offset'])
+            asyncio.create_task(self.roster_listener(*user))
 
     @commands.Cog.listener()
     async def on_ready(self):
