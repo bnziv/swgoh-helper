@@ -5,6 +5,11 @@ from discord.ext import commands, tasks
 from datetime import datetime, timedelta
 import asyncio
 
+DAILY_WINDOW = timedelta(hours=24).total_seconds()
+DAILY_REMINDER = timedelta(minutes=30).total_seconds()
+ENERGY_WINDOW = timedelta(hours=2).total_seconds()
+ENERGY_REMINDER = timedelta(minutes=10).total_seconds()
+
 class DailiesEmbed(discord.Embed):
     def __init__(self, title=None, description=None):
         super().__init__(title=title, description=description, color=discord.Color.brand_green())
@@ -29,15 +34,15 @@ class Dailies(commands.Cog):
         try:
             def check(reaction, reactor):
                 return (int(discord_id) == reactor.id and str(reaction.emoji) == "✅" and reaction.message.id == message.id)
-            await self.bot.wait_for("reaction_add", timeout=5400, check=check)
+            await self.bot.wait_for("reaction_add", timeout=ENERGY_WINDOW - ENERGY_REMINDER, check=check)
             await message.delete()
         except asyncio.TimeoutError:
             reminder_embed = DailiesEmbed(description=f"30 minutes left to claim free energy")
-            reminder = await helpers.send_dm(self.bot, discord_id, embed=reminder_embed)
+            reminder = await helpers.send_dm(bot=self.bot, discord_id=discord_id, embed=reminder_embed)
             if not reminder:
                 return
             try:
-                await self.bot.wait_for("reaction_add", timeout=1800, check=check)
+                await self.bot.wait_for("reaction_add", timeout=ENERGY_REMINDER, check=check)
             except:
                 pass
             await message.delete()
@@ -59,15 +64,15 @@ class Dailies(commands.Cog):
         try:
             def check(reaction, reactor):
                 return (int(discord_id) == reactor.id and str(reaction.emoji) == "✅" and reaction.message.id == message.id)
-            await self.bot.wait_for("reaction_add", timeout=82800, check=check)
+            await self.bot.wait_for("reaction_add", timeout=DAILY_WINDOW - DAILY_REMINDER, check=check)
             await message.delete()
         except asyncio.TimeoutError:
             reminder_embed = DailiesEmbed(description=f"1 hour left until reset\nReminder for {name} to do dailies")
-            reminder = await helpers.send_dm(bot=self.bot, discord=discord_id, embed=reminder_embed)
+            reminder = await helpers.send_dm(bot=self.bot, discord_id=discord_id, embed=reminder_embed)
             if not reminder:
                 return
             try:
-                await self.bot.wait_for("reaction_add", timeout=3600, check=check)
+                await self.bot.wait_for("reaction_add", timeout=DAILY_REMINDER, check=check)
             except:
                 pass
             await message.delete()
