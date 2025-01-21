@@ -8,7 +8,7 @@ import asyncio
 DAILY_WINDOW = timedelta(hours=24).total_seconds()
 DAILY_REMINDER = timedelta(minutes=30).total_seconds()
 ENERGY_WINDOW = timedelta(hours=2).total_seconds()
-ENERGY_REMINDER = timedelta(minutes=10).total_seconds()
+ENERGY_REMINDER = timedelta(minutes=15).total_seconds()
 
 class DailiesEmbed(discord.Embed):
     def __init__(self, title=None, description=None):
@@ -37,7 +37,7 @@ class Dailies(commands.Cog):
             await self.bot.wait_for("reaction_add", timeout=ENERGY_WINDOW - ENERGY_REMINDER, check=check)
             await message.delete()
         except asyncio.TimeoutError:
-            reminder_embed = DailiesEmbed(description=f"30 minutes left to claim free energy")
+            reminder_embed = DailiesEmbed(description=f"15 minutes left to claim free energy")
             reminder = await helpers.send_dm(bot=self.bot, discord_id=discord_id, embed=reminder_embed)
             if not reminder:
                 return
@@ -67,7 +67,7 @@ class Dailies(commands.Cog):
             await self.bot.wait_for("reaction_add", timeout=DAILY_WINDOW - DAILY_REMINDER, check=check)
             await message.delete()
         except asyncio.TimeoutError:
-            reminder_embed = DailiesEmbed(description=f"1 hour left until reset\nReminder for {name} to do dailies")
+            reminder_embed = DailiesEmbed(description=f"30 minutes left until reset\nReminder for {name} to do dailies")
             reminder = await helpers.send_dm(bot=self.bot, discord_id=discord_id, embed=reminder_embed)
             if not reminder:
                 return
