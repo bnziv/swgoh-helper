@@ -2,6 +2,8 @@
 
 SWGOH Helper is a Discord bot for the Star Wars: Galaxy of Heroes mobile game. It provides various functionalities related to the game, such as providing information about units and events, account linkage, and more. It uses the discord.py library for Discord API interaction, along with the self-hosted [swgoh-comlink](https://github.com/swgoh-utils/swgoh-comlink/) service to fetch game data and a Postgres database to store data for the bot. It can be deployed together with the provided Docker Compose file, or run manually with external Comlink and Postgres servers.
 
+This bot leverages a custom-built asynchronous API wrapper, [async-comlink](https://github.com/bnziv/async-comlink), to efficiently interact with the service. This wrapper simplifies API requests, ensuring smooth and non-blocking communication between the bot and the game APIs.
+
 ## Features
 
 #### Command Groups
