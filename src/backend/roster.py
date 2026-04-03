@@ -1,9 +1,9 @@
 from backend.database import Database
-from swgoh_comlink import SwgohComlink
+from async_comlink import AsyncComlink
 from backend import queries
 
 class Roster:
-    def __init__(self, database: Database, comlink: SwgohComlink):
+    def __init__(self, database: Database, comlink: AsyncComlink):
         self.db = database
         self.comlink = comlink
 
